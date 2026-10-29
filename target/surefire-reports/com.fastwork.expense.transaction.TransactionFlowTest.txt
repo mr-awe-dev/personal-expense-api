@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.fastwork.expense.transaction.TransactionFlowTest
 -------------------------------------------------------------------------------
-Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.482 s -- in com.fastwork.expense.transaction.TransactionFlowTest
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.569 s -- in com.fastwork.expense.transaction.TransactionFlowTest

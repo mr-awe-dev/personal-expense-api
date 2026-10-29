@@ -31,7 +31,7 @@ personal-expense-api,com.fastwork.expense.config,PostgresOpaqueTextJdbcType,0,10
 personal-expense-api,com.fastwork.expense.config,PostgresOpaqueTextJdbcType.new ValueBinder() {...},0,15,0,0,0,5,0,3,0,3
 personal-expense-api,com.fastwork.expense.config,SpaCsrfTokenRequestHandler,0,26,0,4,0,7,0,5,0,3
 personal-expense-api,com.fastwork.expense.config,SecurityConfig.CsrfCookieFilter,0,16,0,2,0,5,0,2,0,1
-personal-expense-api,com.fastwork.expense.config,SecurityConfig,0,261,0,4,0,57,0,27,0,25
+personal-expense-api,com.fastwork.expense.config,SecurityConfig,0,312,0,4,0,73,0,29,0,27
 personal-expense-api,com.fastwork.expense.ops,OpsController,0,7,0,0,0,2,0,2,0,2
 personal-expense-api,com.fastwork.expense.user,ChangePasswordRequest,0,9,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.user,MeResponse,0,42,0,0,0,9,0,2,0,2
