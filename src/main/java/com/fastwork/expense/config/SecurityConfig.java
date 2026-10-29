@@ -27,6 +27,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -117,7 +118,8 @@ public class SecurityConfig {
                         throws Exception {
 
                 CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-                csrfTokenRepository.setCookieCustomizer(cookie -> cookie.path("/").sameSite("Lax"));
+                csrfTokenRepository.setCookieCustomizer(cookie -> cookie.path("/").sameSite("Lax"),
+                                cookie -> cookie.secure(true));
 
                 http
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
