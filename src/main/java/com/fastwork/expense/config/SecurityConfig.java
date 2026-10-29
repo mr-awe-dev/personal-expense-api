@@ -82,7 +82,9 @@ public class SecurityConfig {
                 CorsConfiguration configuration = new CorsConfiguration();
 
                 configuration.setAllowedOrigins(
-                                List.of("https://personal-expense-4zg.pages.dev"));
+                                List.of(
+                                                "https://personal-expense-4zg.pages.dev",
+                                                "http://localhost:3000"));
 
                 configuration.setAllowedMethods(
                                 List.of(
