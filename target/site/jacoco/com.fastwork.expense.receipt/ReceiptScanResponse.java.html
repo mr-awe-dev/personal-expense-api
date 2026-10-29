@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReceiptScanResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.receipt</a> &gt; <span class="el_source">ReceiptScanResponse.java</span></div><h1>ReceiptScanResponse.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.receipt;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+
+/** Hasil pembacaan struk; field null berarti tidak terbaca dengan yakin. */
+<span class="fc" id="L6">public record ReceiptScanResponse(</span>
+        @Schema(description = &quot;Nominal rupiah terdeteksi&quot;, example = &quot;45000&quot;) Long amount,
+        @Schema(description = &quot;Tanggal ISO terdeteksi&quot;, example = &quot;2026-10-24&quot;) String date,
+        @Schema(description = &quot;Nama merchant/line pertama terdeteksi&quot;, example = &quot;Warung Kopi&quot;)
+                String description,
+        @Schema(description = &quot;Keyakinan heuristik 0–100&quot;, example = &quot;80&quot;) int confidence,
+        @Schema(
+                        description =
+                                &quot;Teks OCR mentah — HANYA saat app.receipt.debug-return-ocr-text=true&quot;
+                                        + &quot; (diagnostik non-prod)&quot;)
+                String ocrText) {}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

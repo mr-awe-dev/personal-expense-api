@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration>
+<configuration>
+  <!--
+    Logging terstruktur (next-action Task 1).
+    - profile : teks untuk dev/CLI (dibaca manusia via docker logs / konsol lokal)
+    - prod    : JSON satu baris per event, siap untuk agregasi log terpusat
+    Field MDC (requestId, userId) dan marker (operation, durationMs, ...) otomatis disertakan.
+    Tidak ada appender file — Docker/Caddy menangani retensi; volume & rotasi diatur di runtime.
+  -->
+
+  <appender name="TEXT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>
+        %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} rid=%X{requestId:-} uid=%X{userId:-} - %msg%n
+      </pattern>
+    </encoder>
+  </appender>
+
+  <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+      <providers>
+        <timestamp>
+          <fieldName>timestamp</fieldName>
+          <timeZone>UTC</timeZone>
+        </timestamp>
+        <version/>
+        <logLevel>
+          <fieldName>level</fieldName>
+        </logLevel>
+        <loggerName>
+          <fieldName>logger_name</fieldName>
+        </loggerName>
+        <threadName>
+          <fieldName>thread_name</fieldName>
+        </threadName>
+        <message/>
+        <mdc/>
+        <logstashMarkers/>
+        <stackTrace>
+          <fieldName>exception</fieldName>
+        </stackTrace>
+        <provider class="com.fastwork.expense.observability.MonolithModuleJsonProvider"/>
+        <pattern>
+          <pattern>{"app":"personal-expense-api"}</pattern>
+        </pattern>
+      </providers>
+    </encoder>
+  </appender>
+
+  <springProfile name="prod">
+    <root level="INFO">
+      <appender-ref ref="JSON"/>
+    </root>
+  </springProfile>
+
+  <springProfile name="!prod">
+    <root level="INFO">
+      <appender-ref ref="TEXT"/>
+    </root>
+  </springProfile>
+</configuration>

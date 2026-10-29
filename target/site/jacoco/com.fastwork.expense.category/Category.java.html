@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Category.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.category</a> &gt; <span class="el_source">Category.java</span></div><h1>Category.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.category;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import com.fastwork.expense.common.TxType;
+import com.fastwork.expense.config.PostgresEnumJdbcType;
+
+@Entity
+@Table(name = &quot;categories&quot;)
+public class Category {
+
+    @Id private UUID id;
+
+    @Column(name = &quot;user_id&quot;, nullable = false)
+    private UUID userId;
+
+    @JdbcType(PostgresEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = &quot;tx_type&quot;)
+    private TxType type;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(name = &quot;name_key&quot;, nullable = false)
+    private String nameKey;
+
+<span class="fc" id="L37">    @Column(nullable = false)</span>
+    private Boolean archived = Boolean.FALSE;
+
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = &quot;updated_at&quot;, nullable = false)
+    private Instant updatedAt;
+
+<span class="fc" id="L48">    protected Category() {}</span>
+
+<span class="fc" id="L50">    public Category(UUID id, UUID userId, TxType type, String name, String nameKey) {</span>
+<span class="fc" id="L51">        this.id = id;</span>
+<span class="fc" id="L52">        this.userId = userId;</span>
+<span class="fc" id="L53">        this.type = type;</span>
+<span class="fc" id="L54">        this.name = name;</span>
+<span class="fc" id="L55">        this.nameKey = nameKey;</span>
+<span class="fc" id="L56">    }</span>
+
+    public UUID getId() {
+<span class="fc" id="L59">        return id;</span>
+    }
+
+    public UUID getUserId() {
+<span class="fc" id="L63">        return userId;</span>
+    }
+
+    public TxType getType() {
+<span class="fc" id="L67">        return type;</span>
+    }
+
+    public String getName() {
+<span class="fc" id="L71">        return name;</span>
+    }
+
+    public String getNameKey() {
+<span class="fc" id="L75">        return nameKey;</span>
+    }
+
+    public void rename(String name, String nameKey) {
+<span class="fc" id="L79">        this.name = name;</span>
+<span class="fc" id="L80">        this.nameKey = nameKey;</span>
+<span class="fc" id="L81">    }</span>
+
+    public Boolean getArchived() {
+<span class="fc" id="L84">        return archived;</span>
+    }
+
+    public void setArchived(Boolean archived) {
+<span class="fc" id="L88">        this.archived = archived;</span>
+<span class="fc" id="L89">    }</span>
+
+    public Instant getCreatedAt() {
+<span class="fc" id="L92">        return createdAt;</span>
+    }
+
+    public Instant getUpdatedAt() {
+<span class="fc" id="L96">        return updatedAt;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

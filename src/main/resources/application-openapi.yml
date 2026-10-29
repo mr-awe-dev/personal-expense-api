@@ -1,0 +1,43 @@
+spring:
+  config:
+    activate:
+      on-profile: openapi
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        # Tanpa koneksi database, Hibernate tidak bisa mendeteksi dialect.
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:1/openapi-generation-only
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 1
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+app:
+  security:
+    hsts-enabled: false
+  cors:
+    allowed-origins: ''
+  receipt:
+    binary: tesseract
+    languages: ind+eng
+  rate-limit:
+    enabled: false
+    ip-requests-per-minute: 20
+    email-requests-per-window: 5
+    delay-base-ms: 500
+    delay-max-ms: 8000
+
+logging:
+  level:
+    root: WARN

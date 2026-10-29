@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoginRateLimiter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.auth</a> &gt; <span class="el_source">LoginRateLimiter.java</span></div><h1>LoginRateLimiter.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.auth;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+import com.fastwork.expense.common.ApiException;
+
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.EstimationProbe;
+
+/**
+ * Rate limiter percobaan login: batas per-IP per menit, batas per-email per jendela 15 menit, dan
+ * delay progresif per-email setelah kegagalan (reset saat sukses). In-memory, per instance.
+ */
+@Component
+@ConfigurationProperties(prefix = &quot;app.rate-limit&quot;)
+<span class="fc" id="L24">public class LoginRateLimiter {</span>
+
+<span class="fc" id="L26">    private static final Duration EMAIL_WINDOW = Duration.ofMinutes(15);</span>
+
+<span class="fc" id="L28">    private boolean enabled = true;</span>
+<span class="fc" id="L29">    private int ipRequestsPerMinute = 20;</span>
+<span class="fc" id="L30">    private int emailRequestsPerWindow = 5;</span>
+<span class="fc" id="L31">    private long delayBaseMs = 500;</span>
+<span class="fc" id="L32">    private long delayMaxMs = 8000;</span>
+
+<span class="fc" id="L34">    private final Map&lt;String, Bucket&gt; ipBuckets = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L35">    private final Map&lt;String, EmailState&gt; emailStates = new ConcurrentHashMap&lt;&gt;();</span>
+
+<span class="fc" id="L37">    private static final class EmailState {</span>
+        volatile Bucket attempts;
+<span class="fc" id="L39">        volatile Instant nextAllowedAt = Instant.EPOCH;</span>
+        volatile int consecutiveFailures;
+    }
+
+    public void assertAttemptAllowed(String clientIp, String email) {
+<span class="fc" id="L44">        assertAttemptAllowed(clientIp, email, &quot;login&quot;);</span>
+<span class="fc" id="L45">    }</span>
+
+    public void assertAttemptAllowed(String clientIp, String email, String action) {
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (!enabled) {</span>
+<span class="fc" id="L49">            return;</span>
+        }
+<span class="fc" id="L51">        Bucket ipBucket =</span>
+<span class="fc" id="L52">                ipBuckets.computeIfAbsent(</span>
+                        clientIp,
+<span class="fc" id="L54">                        key -&gt; fixedWindowBucket(ipRequestsPerMinute, Duration.ofMinutes(1)));</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (!ipBucket.tryConsume(1)) {</span>
+<span class="fc" id="L56">            throw ApiException.rateLimited(</span>
+                    60, &quot;Terlalu banyak percobaan dari jaringan ini. Coba lagi nanti.&quot;);
+        }
+<span class="fc bfc" id="L59" title="All 4 branches covered.">        if (email == null || email.isBlank()) {</span>
+<span class="fc" id="L60">            return;</span>
+        }
+<span class="fc" id="L62">        String emailKey = email.trim().toLowerCase(Locale.ROOT) + '#' + action;</span>
+<span class="fc" id="L63">        EmailState state = emailStates.computeIfAbsent(emailKey, key -&gt; new EmailState());</span>
+<span class="fc" id="L64">        synchronized (state) {</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">            if (state.attempts == null) {</span>
+<span class="fc" id="L66">                state.attempts = fixedWindowBucket(emailRequestsPerWindow, EMAIL_WINDOW);</span>
+            }
+<span class="fc" id="L68">        }</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (!state.attempts.tryConsume(1)) {</span>
+<span class="fc" id="L70">            EstimationProbe probe = state.attempts.estimateAbilityToConsume(1);</span>
+<span class="fc" id="L71">            long seconds =</span>
+<span class="fc" id="L72">                    Math.max(1, (probe.getNanosToWaitForRefill() + 999_999_999L) / 1_000_000_000L);</span>
+<span class="fc" id="L73">            throw ApiException.rateLimited(</span>
+                    seconds,
+                    &quot;Terlalu banyak percobaan &quot; + action + &quot; untuk email ini. Coba lagi nanti.&quot;);
+        }
+<span class="fc" id="L77">        Instant now = Instant.now();</span>
+<span class="fc" id="L78">        Instant allowed = state.nextAllowedAt;</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        if (now.isBefore(allowed)) {</span>
+<span class="fc" id="L80">            long seconds = Math.max(1, Duration.between(now, allowed).toSeconds());</span>
+<span class="fc" id="L81">            throw ApiException.rateLimited(seconds, &quot;Tunggu beberapa detik sebelum mencoba lagi.&quot;);</span>
+        }
+<span class="fc" id="L83">    }</span>
+
+    public void recordFailure(String email) {
+<span class="fc" id="L86">        recordFailure(email, &quot;login&quot;);</span>
+<span class="fc" id="L87">    }</span>
+
+    public void recordFailure(String email, String action) {
+<span class="fc bfc" id="L90" title="All 6 branches covered.">        if (!enabled || email == null || email.isBlank()) {</span>
+<span class="fc" id="L91">            return;</span>
+        }
+<span class="fc" id="L93">        EmailState state =</span>
+<span class="fc" id="L94">                emailStates.computeIfAbsent(</span>
+<span class="fc" id="L95">                        email.trim().toLowerCase(Locale.ROOT) + '#' + action,</span>
+<span class="fc" id="L96">                        key -&gt; new EmailState());</span>
+<span class="fc" id="L97">        synchronized (state) {</span>
+<span class="fc" id="L98">            state.consecutiveFailures = Math.min(state.consecutiveFailures + 1, 10);</span>
+<span class="fc" id="L99">            long delayMs = delayFor(state.consecutiveFailures);</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">            state.nextAllowedAt = delayMs &lt;= 0 ? Instant.EPOCH : Instant.now().plusMillis(delayMs);</span>
+<span class="fc" id="L101">        }</span>
+<span class="fc" id="L102">    }</span>
+
+    public void recordSuccess(String email) {
+<span class="fc" id="L105">        recordSuccess(email, &quot;login&quot;);</span>
+<span class="fc" id="L106">    }</span>
+
+    public void recordSuccess(String email, String action) {
+<span class="fc bfc" id="L109" title="All 6 branches covered.">        if (!enabled || email == null || email.isBlank()) {</span>
+<span class="fc" id="L110">            return;</span>
+        }
+<span class="fc" id="L112">        EmailState state =</span>
+<span class="fc" id="L113">                emailStates.computeIfAbsent(</span>
+<span class="fc" id="L114">                        email.trim().toLowerCase(Locale.ROOT) + '#' + action,</span>
+<span class="fc" id="L115">                        key -&gt; new EmailState());</span>
+<span class="fc" id="L116">        synchronized (state) {</span>
+<span class="fc" id="L117">            state.consecutiveFailures = 0;</span>
+<span class="fc" id="L118">            state.nextAllowedAt = Instant.EPOCH;</span>
+<span class="fc" id="L119">        }</span>
+<span class="fc" id="L120">    }</span>
+
+    public String normalizeEmail(String email) {
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        return email == null ? &quot;&quot; : email.trim().toLowerCase(Locale.ROOT);</span>
+    }
+
+    private long delayFor(int consecutiveFailures) {
+<span class="fc" id="L127">        long base = Math.max(0, delayBaseMs);</span>
+<span class="fc" id="L128">        long max = Math.max(base, delayMaxMs);</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        if (base &lt;= 0) {</span>
+<span class="fc" id="L130">            return 0;</span>
+        }
+<span class="fc" id="L132">        long scaled = base * (1L &lt;&lt; Math.min(Math.max(consecutiveFailures - 1, 0), 20));</span>
+<span class="fc" id="L133">        return Math.min(scaled, max);</span>
+    }
+
+    private static Bucket fixedWindowBucket(int capacity, Duration window) {
+        Bandwidth limit =
+<span class="fc" id="L138">                Bandwidth.builder().capacity(capacity).refillIntervally(capacity, window).build();</span>
+<span class="fc" id="L139">        return Bucket.builder().addLimit(limit).build();</span>
+    }
+
+    public void setEnabled(boolean enabled) {
+<span class="fc" id="L143">        this.enabled = enabled;</span>
+<span class="fc" id="L144">    }</span>
+
+    public void setIpRequestsPerMinute(int ipRequestsPerMinute) {
+<span class="fc" id="L147">        this.ipRequestsPerMinute = ipRequestsPerMinute;</span>
+<span class="fc" id="L148">    }</span>
+
+    public void setEmailRequestsPerWindow(int emailRequestsPerWindow) {
+<span class="fc" id="L151">        this.emailRequestsPerWindow = emailRequestsPerWindow;</span>
+<span class="fc" id="L152">    }</span>
+
+    public void setDelayBaseMs(long delayBaseMs) {
+<span class="fc" id="L155">        this.delayBaseMs = delayBaseMs;</span>
+<span class="fc" id="L156">    }</span>
+
+    public void setDelayMaxMs(long delayMaxMs) {
+<span class="fc" id="L159">        this.delayMaxMs = delayMaxMs;</span>
+<span class="fc" id="L160">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

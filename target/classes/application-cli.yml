@@ -1,0 +1,15 @@
+spring:
+  config:
+    activate:
+      on-profile: cli
+  main:
+    web-application-type: servlet
+    banner-mode: off
+
+server:
+  port: 0
+
+logging:
+  level:
+    root: WARN
+    com.fastwork.expense: INFO

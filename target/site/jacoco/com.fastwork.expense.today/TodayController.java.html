@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TodayController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.today</a> &gt; <span class="el_source">TodayController.java</span></div><h1>TodayController.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.today;
+
+import java.time.LocalDate;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fastwork.expense.user.CurrentUserService;
+import com.fastwork.expense.user.User;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping(&quot;/api/v1/today&quot;)
+@Tag(
+        name = &quot;Today&quot;,
+        description = &quot;Ringkasan hari ini: sisa batas harian &amp; kategori ber-budget harian&quot;)
+public class TodayController {
+
+    private final CurrentUserService currentUser;
+    private final TodayService todayService;
+
+    @GetMapping
+    @Operation(
+            summary = &quot;Total pengeluaran, sisa batas harian, status, dan rincian kategori harian&quot;)
+    public TodayResponse today(@RequestParam(required = false) LocalDate date) {
+<span class="fc" id="L32">        User user = currentUser.get();</span>
+<span class="fc" id="L33">        return todayService.today(user.getId(), user.getDailyLimit(), user.getTimezone(), date);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,37 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:postgresql://localhost:5432/expense_test
+    username: expense
+    password: expense
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 1
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+app:
+  security:
+    hsts-enabled: false
+  cors:
+    allowed-origins: ''
+  receipt:
+    binary: tesseract
+    languages: ind+eng
+  rate-limit:
+    enabled: false
+    ip-requests-per-minute: 20
+    email-requests-per-window: 5
+    delay-base-ms: 500
+    delay-max-ms: 8000
+
+logging:
+  level:
+    root: WARN
+    com.fastwork.expense: INFO

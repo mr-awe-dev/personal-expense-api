@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoggingAspect.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.observability</a> &gt; <span class="el_source">LoggingAspect.java</span></div><h1>LoggingAspect.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.observability;
+
+import java.time.Duration;
+import java.util.Map;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
+import net.logstash.logback.marker.Markers;
+
+/**
+ * Stop-watch untuk method publik service layer (monotonik {@code System.nanoTime()}). Deviasi
+ * ambang ({@code app.observability.slow-threshold}, default 500 ms) → WARN; operasi normal → DEBUG
+ * (senyap di level default). Eksepsi TIDAK di-log di sini agar stacktrace tidak dobel — boundary
+ * penanganan ({@code GlobalExceptionHandler}) sudah mencatatnya pada level ERROR. Catatan: durasi
+ * service != durasi SQL; timing per-kueri JDBC perlu instrumentasi terpisah. Tidak ada
+ * argumen/return value yang di-log.
+ */
+@Aspect
+@Component
+@ConditionalOnProperty(
+        prefix = &quot;app.observability&quot;,
+        name = &quot;enabled&quot;,
+        havingValue = &quot;true&quot;,
+        matchIfMissing = true)
+@RequiredArgsConstructor
+public class LoggingAspect {
+
+<span class="fc" id="L35">    private static final Logger log = LoggerFactory.getLogger(LoggingAspect.class);</span>
+
+    private final ObservabilityProperties properties;
+
+    @Around(&quot;execution(public * com.fastwork.expense..*Service.*(..))&quot;)
+    public Object measure(ProceedingJoinPoint joinPoint) throws Throwable {
+<span class="fc" id="L41">        long startedAt = System.nanoTime();</span>
+<span class="fc" id="L42">        String operation =</span>
+<span class="fc" id="L43">                joinPoint.getSignature().getDeclaringType().getSimpleName()</span>
+                        + &quot;.&quot;
+<span class="fc" id="L45">                        + joinPoint.getSignature().getName();</span>
+        try {
+<span class="fc" id="L47">            Object result = joinPoint.proceed();</span>
+<span class="fc" id="L48">            long durationMs = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">            if (durationMs &gt;= properties.getSlowThreshold().toMillis()) {</span>
+<span class="fc" id="L50">                log.warn(</span>
+<span class="fc" id="L51">                        Markers.appendEntries(</span>
+<span class="fc" id="L52">                                Map.of(</span>
+                                        &quot;operation&quot;,
+                                        operation,
+                                        &quot;durationMs&quot;,
+<span class="fc" id="L56">                                        durationMs,</span>
+                                        &quot;slow&quot;,
+<span class="fc" id="L58">                                        true,</span>
+                                        &quot;outcome&quot;,
+                                        &quot;success&quot;)),
+                        &quot;Lambat: {} selesai dalam {} ms&quot;,
+                        operation,
+<span class="fc" id="L63">                        durationMs);</span>
+            } else {
+<span class="fc" id="L65">                log.debug(</span>
+<span class="fc" id="L66">                        Markers.appendEntries(</span>
+<span class="fc" id="L67">                                Map.of(</span>
+                                        &quot;operation&quot;, operation,
+<span class="fc" id="L69">                                        &quot;durationMs&quot;, durationMs,</span>
+                                        &quot;outcome&quot;, &quot;success&quot;)),
+                        &quot;Selesai: {} ({} ms)&quot;,
+                        operation,
+<span class="fc" id="L73">                        durationMs);</span>
+            }
+<span class="fc" id="L75">            return result;</span>
+<span class="fc" id="L76">        } catch (Throwable ex) {</span>
+<span class="fc" id="L77">            long durationMs = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();</span>
+<span class="fc" id="L78">            log.debug(</span>
+<span class="fc" id="L79">                    Markers.appendEntries(</span>
+<span class="fc" id="L80">                            Map.of(</span>
+                                    &quot;operation&quot;,
+                                    operation,
+                                    &quot;durationMs&quot;,
+<span class="fc" id="L84">                                    durationMs,</span>
+                                    &quot;outcome&quot;,
+                                    &quot;error&quot;,
+                                    &quot;exception&quot;,
+<span class="fc" id="L88">                                    ex.getClass().getSimpleName())),</span>
+                    &quot;Gagal: {} setelah {} ms ({})&quot;,
+                    operation,
+<span class="fc" id="L91">                    durationMs,</span>
+<span class="fc" id="L92">                    ex.getClass().getSimpleName());</span>
+<span class="fc" id="L93">            throw ex;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

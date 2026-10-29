@@ -1,0 +1,114 @@
+spring:
+  application:
+    name: personal-expense-api
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX}
+      minimum-idle: ${DB_POOL_MIN}
+      connection-timeout: 10000
+      pool-name: pet-cp
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_batch_fetch_size: 50
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never
+      table-name: SPRING_SESSION
+    timeout: 30d
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 12MB
+      max-request-size: 14MB
+  mvc:
+    problemdetails:
+      enabled: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+  shutdown: graceful
+  servlet:
+    session:
+      timeout: 30d
+      cookie:
+        name: PET_SESSION
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE}
+        same-site: lax
+        path: /
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/css,application/javascript,text/javascript,image/svg+xml
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    db:
+      enabled: false
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    version: openapi_3_1
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+
+app:
+  security:
+    hsts-enabled: ${HSTS_ENABLED}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  receipt:
+    binary: ${TESSERACT_BIN}
+    languages: ${TESSERACT_LANGS}
+    psm: "6"
+    timeout-seconds: 25
+    max-image-bytes: 10485760
+    debug-return-ocr-text: false
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED}
+    ip-requests-per-minute: ${RATE_LIMIT_IP_PER_MINUTE}
+    email-requests-per-window: ${RATE_LIMIT_EMAIL_PER_WINDOW}
+    delay-base-ms: ${RATE_LIMIT_DELAY_BASE_MS}
+    delay-max-ms: ${RATE_LIMIT_DELAY_MAX_MS}
+  observability:
+    enabled: true
+    slow-threshold: 500ms
+
+logging:
+  level:
+    root: INFO
+    com.fastwork.expense: INFO
+    org.springframework.security: WARN

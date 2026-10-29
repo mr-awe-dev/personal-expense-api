@@ -1,0 +1,13 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+app:
+  security:
+    hsts-enabled: false
+
+logging:
+  level:
+    com.fastwork.expense: DEBUG
+    org.springframework.jdbc.core: DEBUG
