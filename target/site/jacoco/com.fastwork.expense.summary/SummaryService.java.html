@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SummaryService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.summary</a> &gt; <span class="el_source">SummaryService.java</span></div><h1>SummaryService.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.summary;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fastwork.expense.budget.BudgetPeriod;
+import com.fastwork.expense.common.ApiException;
+import com.fastwork.expense.common.TxType;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class SummaryService {
+
+    static final long DEFAULT_ROW_LIMIT = 2000L;
+    static final long MAX_ROW_LIMIT = 5000L;
+
+    /** Totals per jenis; dihitung dari transaksi berjalan dalam rentang (inklusif). */
+    private static final String TYPE_TOTALS_SQL =
+            &quot;&quot;&quot;
+            SELECT t.type, coalesce(sum(t.amount), 0) as total
+            FROM transactions t
+            WHERE t.user_id = :userId and t.closing_id is null
+              and t.date &gt;= :from and t.date &lt;= :to
+            GROUP BY t.type
+            &quot;&quot;&quot;;
+
+    /**
+     * Per kategori/sumber (income selalu berkategori; expense boleh tanpa kategori), terbesar dulu
+     * lalu nama naik untuk urutan yang stabil.
+     */
+    private static final String BY_CATEGORY_SQL =
+            &quot;&quot;&quot;
+            select t.type, t.category_id, c.name as category_name, c.archived as category_archived,
+                   coalesce(sum(t.amount), 0) as amount
+            from transactions t
+            left join categories c on c.id = t.category_id
+            where t.user_id = :userId and t.closing_id is null
+              and t.date &gt;= :from and t.date &lt;= :to
+            group by t.type, t.category_id, c.name, c.archived
+            order by amount desc, category_name asc, t.category_id asc
+            &quot;&quot;&quot;;
+
+    /** Budget (semua periode) + aktual per kategori dalam rentang, termasuk kategori arsip. */
+    private static final String BUDGET_ACTUAL_SQL =
+            &quot;&quot;&quot;
+            select b.category_id, c.name as category_name, c.archived as category_archived,
+                   b.period as period, b.amount as budget_amount, coalesce(s.spent, 0) as spent
+            from budgets b
+            join categories c on c.id = b.category_id
+            left join (
+                select t.category_id, sum(t.amount) as spent
+                from transactions t
+                where t.user_id = :userId and t.closing_id is null
+                  and t.date &gt;= :from and t.date &lt;= :to
+                  and t.type = 'expense' and t.category_id is not null
+                group by t.category_id
+            ) s on s.category_id = b.category_id
+            where b.user_id = :userId
+            order by c.name asc, b.category_id asc
+            &quot;&quot;&quot;;
+
+    private static final String TREND_SQL =
+            &quot;&quot;&quot;
+            select t.date, coalesce(sum(t.amount), 0) as expense
+            from transactions t
+            where t.user_id = :userId and t.closing_id is null
+              and t.date &gt;= :from and t.date &lt;= :to and t.type = 'expense'
+            group by t.date
+            order by t.date asc
+            &quot;&quot;&quot;;
+
+    /** Subtotal penuh per kategori (tidak pernah terpotong); expense dulu, nama naik. */
+    private static final String TABLE_SUBTOTALS_SQL =
+            &quot;&quot;&quot;
+            select t.category_id, c.name as category_name, t.type, c.archived as category_archived,
+                   coalesce(sum(t.amount), 0) as subtotal
+            from transactions t
+            left join categories c on c.id = t.category_id
+            where t.user_id = :userId and t.closing_id is null
+              and t.date &gt;= :from and t.date &lt;= :to
+            group by t.category_id, c.name, t.type, c.archived
+            order by (t.type = 'income') asc, c.name asc nulls first, t.category_id asc
+            &quot;&quot;&quot;;
+
+    /** Detail baris (bisa terpotong oleh limit). */
+    private static final String TABLE_ROWS_SQL =
+            &quot;&quot;&quot;
+            select t.id, t.date, t.type, t.category_id, c.name as category_name,
+                   t.description, t.amount
+            from transactions t
+            left join categories c on c.id = t.category_id
+            where t.user_id = :userId and t.closing_id is null
+              and t.date &gt;= :from and t.date &lt;= :to
+            order by t.date desc, t.created_at desc, t.id desc
+            limit :limit
+            &quot;&quot;&quot;;
+
+    private static final String TOTAL_COUNT_SQL =
+            &quot;&quot;&quot;
+            select count(*)
+            from transactions t
+            where t.user_id = :userId and t.closing_id is null
+              and t.date &gt;= :from and t.date &lt;= :to
+            &quot;&quot;&quot;;
+
+    private final JdbcClient jdbcClient;
+
+    @Transactional(readOnly = true)
+    public SummaryResponse summary(
+            UUID userId,
+            String timezone,
+            @Nullable LocalDate requestedFrom,
+            @Nullable LocalDate requestedTo) {
+<span class="fc" id="L133">        Window window = window(timezone, requestedFrom, requestedTo);</span>
+
+<span class="fc" id="L135">        List&lt;CategoryRow&gt; categoryRows =</span>
+                jdbcClient
+<span class="fc" id="L137">                        .sql(BY_CATEGORY_SQL)</span>
+<span class="fc" id="L138">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L139">                        .query((rs, rowNum) -&gt; mapCategoryRow(rs))</span>
+<span class="fc" id="L140">                        .list();</span>
+<span class="fc" id="L141">        Map&lt;CategoryRow, Long&gt; shareFloors = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L142">        Map&lt;CategoryRow, Long&gt; shareRemainders = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L143">        largestRemainderParts(categoryRows, shareFloors, shareRemainders);</span>
+
+<span class="fc" id="L145">        long total = totalAmount(categoryRows);</span>
+<span class="fc" id="L146">        List&lt;CategoryShare&gt; incomeBySource = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L147">        List&lt;CategoryShare&gt; expenseByCategory = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L148">        long floorsSum = 0;</span>
+<span class="fc bfc" id="L149" title="All 2 branches covered.">        for (CategoryRow row : categoryRows) {</span>
+<span class="fc" id="L150">            floorsSum += shareFloors.getOrDefault(row, 0L);</span>
+<span class="fc" id="L151">        }</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">        long missing = total &gt; 0 ? 100 - floorsSum : 0;</span>
+<span class="fc" id="L153">        Map&lt;CategoryRow, Integer&gt; bonus = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">        if (missing &gt; 0) {</span>
+<span class="fc" id="L155">            List&lt;CategoryRow&gt; ranked = new ArrayList&lt;&gt;(categoryRows);</span>
+<span class="fc" id="L156">            ranked.sort((a, b) -&gt; Long.compare(shareRemainders.get(b), shareRemainders.get(a)));</span>
+<span class="fc bfc" id="L157" title="All 2 branches covered.">            for (int index = 0; index &lt; Math.min(missing, ranked.size()); index++) {</span>
+<span class="fc" id="L158">                bonus.merge(ranked.get(index), 1, Integer::sum);</span>
+            }
+        }
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        for (CategoryRow row : categoryRows) {</span>
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">            long share = total &gt; 0 ? shareFloors.get(row) + bonus.getOrDefault(row, 0) : 0;</span>
+<span class="fc" id="L163">            CategoryShare value =</span>
+                    new CategoryShare(
+<span class="fc" id="L165">                            row.categoryId(), row.name(), row.archived(), row.amount(), share);</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">            if (row.type() == TxType.INCOME) {</span>
+<span class="fc" id="L167">                incomeBySource.add(value);</span>
+            } else {
+<span class="fc" id="L169">                expenseByCategory.add(value);</span>
+            }
+<span class="fc" id="L171">        }</span>
+
+<span class="fc" id="L173">        Totals totals = typeTotals(userId, window);</span>
+<span class="fc" id="L174">        return new SummaryResponse(</span>
+<span class="fc" id="L175">                window.from(),</span>
+<span class="fc" id="L176">                window.to(),</span>
+                new SummaryKpi(
+<span class="fc" id="L178">                        totals.income(),</span>
+<span class="fc" id="L179">                        totals.expense(),</span>
+<span class="fc" id="L180">                        totals.income() - totals.expense(),</span>
+<span class="fc" id="L181">                        savingsRate(totals)),</span>
+                incomeBySource,
+                expenseByCategory,
+<span class="fc" id="L184">                budgetActuals(userId, window),</span>
+<span class="fc" id="L185">                trend(userId, window));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public SummaryTableResponse table(
+            UUID userId,
+            String timezone,
+            @Nullable LocalDate requestedFrom,
+            @Nullable LocalDate requestedTo,
+            @Nullable Integer requestedLimit) {
+<span class="fc" id="L195">        Window window = window(timezone, requestedFrom, requestedTo);</span>
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        long limit = requestedLimit == null ? DEFAULT_ROW_LIMIT : requestedLimit;</span>
+<span class="fc" id="L197">        limit = Math.max(1, Math.min(limit, MAX_ROW_LIMIT));</span>
+
+<span class="fc" id="L199">        List&lt;SubtotalRow&gt; subtotalRows =</span>
+                jdbcClient
+<span class="fc" id="L201">                        .sql(TABLE_SUBTOTALS_SQL)</span>
+<span class="fc" id="L202">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L203">                        .query((rs, rowNum) -&gt; mapSubtotalRow(rs))</span>
+<span class="fc" id="L204">                        .list();</span>
+<span class="fc" id="L205">        Map&lt;String, List&lt;TableRow&gt;&gt; rowsByGroupKey = indexRowsByGroup(rows(userId, window, limit));</span>
+<span class="fc" id="L206">        List&lt;BudgetRow&gt; budgets =</span>
+                jdbcClient
+<span class="fc" id="L208">                        .sql(BUDGET_ACTUAL_SQL)</span>
+<span class="fc" id="L209">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L210">                        .query((rs, rowNum) -&gt; mapBudgetRow(rs))</span>
+<span class="fc" id="L211">                        .list();</span>
+
+<span class="fc" id="L213">        List&lt;TableGroup&gt; groups = new ArrayList&lt;&gt;(subtotalRows.size());</span>
+<span class="fc bfc" id="L214" title="All 2 branches covered.">        for (SubtotalRow row : subtotalRows) {</span>
+<span class="fc" id="L215">            Long budgetAmount = null;</span>
+<span class="fc" id="L216">            Long difference = null;</span>
+<span class="fc bfc" id="L217" title="All 4 branches covered.">            if (row.type() == TxType.EXPENSE &amp;&amp; row.categoryId() != null) {</span>
+<span class="fc" id="L218">                BudgetRow budget = budgetFor(budgets, row.categoryId());</span>
+<span class="fc bfc" id="L219" title="All 2 branches covered.">                if (budget != null) {</span>
+<span class="fc" id="L220">                    budgetAmount = effectiveBudget(budget.period(), budget.amount(), window);</span>
+<span class="fc" id="L221">                    difference = row.subtotal() - budgetAmount;</span>
+                }
+            }
+<span class="fc" id="L224">            String groupKey = groupKeyOf(row.type(), row.categoryId());</span>
+<span class="fc" id="L225">            groups.add(</span>
+                    new TableGroup(
+<span class="fc" id="L227">                            row.categoryId(),</span>
+<span class="fc" id="L228">                            row.name(),</span>
+<span class="fc" id="L229">                            row.type().name(),</span>
+<span class="fc" id="L230">                            rowsByGroupKey.getOrDefault(groupKey, List.of()),</span>
+<span class="fc" id="L231">                            row.subtotal(),</span>
+                            budgetAmount,
+                            difference));
+<span class="fc" id="L234">        }</span>
+
+<span class="fc" id="L236">        Totals totals = typeTotals(userId, window);</span>
+<span class="fc" id="L237">        boolean truncated =</span>
+                jdbcClient
+<span class="fc" id="L239">                                .sql(TOTAL_COUNT_SQL)</span>
+<span class="fc" id="L240">                                .paramSource(source(userId, window))</span>
+<span class="fc" id="L241">                                .query((rs, rowNum) -&gt; rs.getLong(1))</span>
+<span class="fc" id="L242">                                .list()</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">                                .getFirst()</span>
+                        &gt; limit;
+
+<span class="fc" id="L246">        return new SummaryTableResponse(</span>
+<span class="fc" id="L247">                window.from(),</span>
+<span class="fc" id="L248">                window.to(),</span>
+                groups,
+                new TableTotals(
+<span class="fc" id="L251">                        totals.income(), totals.expense(), totals.income() - totals.expense()),</span>
+                truncated);
+    }
+
+<span class="fc" id="L255">    private record Window(LocalDate from, LocalDate to) {}</span>
+
+<span class="fc" id="L257">    private record Totals(long income, long expense) {}</span>
+
+    /** Baris GROUP BY per kategori/sumber untuk pembagian persentase. */
+<span class="fc" id="L260">    private record CategoryRow(</span>
+            TxType type, UUID categoryId, String name, boolean archived, long amount) {}
+
+    /** Baris budget + aktual (sebelum diskalakan ke periode rentang). */
+<span class="fc" id="L264">    private record BudgetRow(</span>
+            UUID categoryId,
+            String name,
+            boolean archived,
+            BudgetPeriod period,
+            long amount,
+            long spent) {}
+
+    /** Baris subtotal tabel per kategori/sumber. */
+<span class="fc" id="L273">    private record SubtotalRow(</span>
+            UUID categoryId, String name, boolean archived, TxType type, long subtotal) {}
+
+    private static Window window(
+            String timezone, @Nullable LocalDate from, @Nullable LocalDate to) {
+<span class="fc" id="L278">        LocalDate today = localToday(timezone);</span>
+<span class="fc bfc" id="L279" title="All 2 branches covered.">        LocalDate resolvedFrom = from != null ? from : today.withDayOfMonth(1);</span>
+<span class="fc bfc" id="L280" title="All 2 branches covered.">        LocalDate resolvedTo = to != null ? to : today;</span>
+<span class="fc bfc" id="L281" title="All 2 branches covered.">        if (resolvedFrom.isAfter(resolvedTo)) {</span>
+<span class="fc" id="L282">            throw ApiException.badRequest(&quot;INVALID_RANGE&quot;, &quot;Rentang tanggal tidak valid&quot;);</span>
+        }
+<span class="fc" id="L284">        return new Window(resolvedFrom, resolvedTo);</span>
+    }
+
+    /** &quot;Hari ini&quot; mengikuti zona waktu profil user (aturan §10 poin 9). */
+    private static LocalDate localToday(String timezone) {
+        try {
+<span class="fc" id="L290">            return LocalDate.now(ZoneId.of(timezone));</span>
+<span class="fc" id="L291">        } catch (DateTimeException invalid) {</span>
+<span class="fc" id="L292">            return LocalDate.now(ZoneOffset.UTC);</span>
+        }
+    }
+
+    private static MapSqlParameterSource source(UUID userId, Window window) {
+<span class="fc" id="L297">        return new MapSqlParameterSource()</span>
+<span class="fc" id="L298">                .addValue(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L299">                .addValue(&quot;from&quot;, window.from())</span>
+<span class="fc" id="L300">                .addValue(&quot;to&quot;, window.to());</span>
+    }
+
+    private Totals typeTotals(UUID userId, Window window) {
+<span class="fc" id="L304">        long income = 0;</span>
+<span class="fc" id="L305">        long expense = 0;</span>
+<span class="fc" id="L306">        List&lt;TotalPart&gt; totals =</span>
+                jdbcClient
+<span class="fc" id="L308">                        .sql(TYPE_TOTALS_SQL)</span>
+<span class="fc" id="L309">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L310">                        .query(</span>
+                                (rs, rowNum) -&gt;
+<span class="fc" id="L312">                                        new TotalPart(</span>
+<span class="fc" id="L313">                                                typeOf(rs.getString(&quot;type&quot;)), rs.getLong(&quot;total&quot;)))</span>
+<span class="fc" id="L314">                        .list();</span>
+<span class="fc bfc" id="L315" title="All 2 branches covered.">        for (TotalPart part : totals) {</span>
+<span class="fc bfc" id="L316" title="All 2 branches covered.">            if (part.type() == TxType.INCOME) {</span>
+<span class="fc" id="L317">                income = part.total();</span>
+            } else {
+<span class="fc" id="L319">                expense = part.total();</span>
+            }
+<span class="fc" id="L321">        }</span>
+<span class="fc" id="L322">        return new Totals(income, expense);</span>
+    }
+
+<span class="fc" id="L325">    private record TotalPart(TxType type, long total) {}</span>
+
+    /** Savings rate = net/income (persen); null bila income 0 (pembagian nol). */
+    private static Long savingsRate(Totals totals) {
+<span class="fc bfc" id="L329" title="All 2 branches covered.">        if (totals.income() &lt;= 0) {</span>
+<span class="fc" id="L330">            return null;</span>
+        }
+<span class="fc" id="L332">        return Math.round((totals.income() - totals.expense()) * 100.0 / totals.income());</span>
+    }
+
+    private static long totalAmount(List&lt;CategoryRow&gt; rows) {
+<span class="fc" id="L336">        long total = 0;</span>
+<span class="fc bfc" id="L337" title="All 2 branches covered.">        for (CategoryRow row : rows) {</span>
+<span class="fc" id="L338">            total += row.amount();</span>
+<span class="fc" id="L339">        }</span>
+<span class="fc" id="L340">        return total;</span>
+    }
+
+    private static void largestRemainderParts(
+            List&lt;CategoryRow&gt; rows,
+            Map&lt;CategoryRow, Long&gt; floors,
+            Map&lt;CategoryRow, Long&gt; remainders) {
+<span class="fc" id="L347">        long total = totalAmount(rows);</span>
+<span class="fc bfc" id="L348" title="All 2 branches covered.">        for (CategoryRow row : rows) {</span>
+<span class="fc" id="L349">            long scaled = row.amount() * 100;</span>
+<span class="pc bpc" id="L350" title="1 of 2 branches missed.">            floors.put(row, total &gt; 0 ? scaled / total : 0);</span>
+<span class="pc bpc" id="L351" title="1 of 2 branches missed.">            remainders.put(row, total &gt; 0 ? scaled % total : 0);</span>
+<span class="fc" id="L352">        }</span>
+<span class="fc" id="L353">    }</span>
+
+    private List&lt;BudgetActualRow&gt; budgetActuals(UUID userId, Window window) {
+<span class="fc" id="L356">        List&lt;BudgetRow&gt; rows =</span>
+                jdbcClient
+<span class="fc" id="L358">                        .sql(BUDGET_ACTUAL_SQL)</span>
+<span class="fc" id="L359">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L360">                        .query((rs, rowNum) -&gt; mapBudgetRow(rs))</span>
+<span class="fc" id="L361">                        .list();</span>
+<span class="fc" id="L362">        List&lt;BudgetActualRow&gt; actuals = new ArrayList&lt;&gt;(rows.size());</span>
+<span class="fc bfc" id="L363" title="All 2 branches covered.">        for (BudgetRow row : rows) {</span>
+<span class="fc" id="L364">            long budget = effectiveBudget(row.period(), row.amount(), window);</span>
+<span class="fc" id="L365">            actuals.add(</span>
+                    new BudgetActualRow(
+<span class="fc" id="L367">                            row.categoryId(),</span>
+<span class="fc" id="L368">                            row.name(),</span>
+<span class="fc" id="L369">                            row.archived(),</span>
+<span class="fc" id="L370">                            row.period().name(),</span>
+                            budget,
+<span class="fc" id="L372">                            row.spent(),</span>
+<span class="fc" id="L373">                            budget - row.spent()));</span>
+<span class="fc" id="L374">        }</span>
+<span class="fc" id="L375">        return actuals;</span>
+    }
+
+    private List&lt;TrendPoint&gt; trend(UUID userId, Window window) {
+<span class="fc" id="L379">        List&lt;TrendPoint&gt; raw =</span>
+                jdbcClient
+<span class="fc" id="L381">                        .sql(TREND_SQL)</span>
+<span class="fc" id="L382">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L383">                        .query(</span>
+                                (rs, rowNum) -&gt;
+<span class="fc" id="L385">                                        new TrendPoint(</span>
+<span class="fc" id="L386">                                                rs.getObject(&quot;date&quot;, LocalDate.class),</span>
+<span class="fc" id="L387">                                                rs.getLong(&quot;expense&quot;)))</span>
+<span class="fc" id="L388">                        .list();</span>
+<span class="fc" id="L389">        Map&lt;LocalDate, Long&gt; sums = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L390" title="All 2 branches covered.">        for (TrendPoint point : raw) {</span>
+<span class="fc" id="L391">            sums.put(point.date(), point.expense());</span>
+<span class="fc" id="L392">        }</span>
+<span class="fc" id="L393">        List&lt;TrendPoint&gt; trend = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L394">        long days = ChronoUnit.DAYS.between(window.from(), window.to()) + 1;</span>
+<span class="fc bfc" id="L395" title="All 2 branches covered.">        for (long offset = 0; offset &lt; days; offset++) {</span>
+<span class="fc" id="L396">            LocalDate date = window.from().plusDays(offset);</span>
+<span class="fc" id="L397">            trend.add(new TrendPoint(date, sums.getOrDefault(date, 0L)));</span>
+        }
+<span class="fc" id="L399">        return trend;</span>
+    }
+
+    private List&lt;TableRow&gt; rows(UUID userId, Window window, long limit) {
+<span class="fc" id="L403">        return jdbcClient</span>
+<span class="fc" id="L404">                .sql(TABLE_ROWS_SQL)</span>
+<span class="fc" id="L405">                .paramSource(source(userId, window).addValue(&quot;limit&quot;, limit))</span>
+<span class="fc" id="L406">                .query((rs, rowNum) -&gt; mapTableRow(rs))</span>
+<span class="fc" id="L407">                .list();</span>
+    }
+
+    private static Map&lt;String, List&lt;TableRow&gt;&gt; indexRowsByGroup(List&lt;TableRow&gt; rows) {
+<span class="fc" id="L411">        Map&lt;String, List&lt;TableRow&gt;&gt; indexed = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L412" title="All 2 branches covered.">        for (TableRow row : rows) {</span>
+<span class="fc" id="L413">            indexed.computeIfAbsent(</span>
+<span class="fc" id="L414">                            groupKeyOf(TxType.valueOf(row.type()), row.categoryId()),</span>
+<span class="fc" id="L415">                            key -&gt; new ArrayList&lt;&gt;())</span>
+<span class="fc" id="L416">                    .add(row);</span>
+<span class="fc" id="L417">        }</span>
+<span class="fc" id="L418">        return indexed;</span>
+    }
+
+    private static String groupKeyOf(TxType type, UUID categoryId) {
+<span class="fc" id="L422">        return type.name() + &quot;|&quot; + categoryId;</span>
+    }
+
+    private static BudgetRow budgetFor(List&lt;BudgetRow&gt; budgets, UUID categoryId) {
+<span class="fc bfc" id="L426" title="All 2 branches covered.">        for (BudgetRow budget : budgets) {</span>
+<span class="fc bfc" id="L427" title="All 2 branches covered.">            if (budget.categoryId().equals(categoryId)) {</span>
+<span class="fc" id="L428">                return budget;</span>
+            }
+<span class="fc" id="L430">        }</span>
+<span class="fc" id="L431">        return null;</span>
+    }
+
+    /** Budget harian diskalakan × jumlah hari rentang; bulanan dibandingkan langsung. */
+    private static long effectiveBudget(BudgetPeriod period, long amount, Window window) {
+<span class="fc bfc" id="L436" title="All 2 branches covered.">        if (period == BudgetPeriod.MONTHLY) {</span>
+<span class="fc" id="L437">            return amount;</span>
+        }
+<span class="fc" id="L439">        long days = ChronoUnit.DAYS.between(window.from(), window.to()) + 1;</span>
+<span class="fc" id="L440">        return amount * days;</span>
+    }
+
+    private static TxType typeOf(String raw) {
+<span class="fc" id="L444">        return TxType.valueOf(raw.toUpperCase(Locale.ROOT));</span>
+    }
+
+    private static CategoryRow mapCategoryRow(ResultSet rs) throws SQLException {
+<span class="fc" id="L448">        return new CategoryRow(</span>
+<span class="fc" id="L449">                typeOf(rs.getString(&quot;type&quot;)),</span>
+<span class="fc" id="L450">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L451">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L452">                rs.getBoolean(&quot;category_archived&quot;),</span>
+<span class="fc" id="L453">                rs.getLong(&quot;amount&quot;));</span>
+    }
+
+    private static BudgetRow mapBudgetRow(ResultSet rs) throws SQLException {
+<span class="fc" id="L457">        return new BudgetRow(</span>
+<span class="fc" id="L458">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L459">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L460">                rs.getBoolean(&quot;category_archived&quot;),</span>
+<span class="fc" id="L461">                BudgetPeriod.valueOf(rs.getString(&quot;period&quot;).toUpperCase(Locale.ROOT)),</span>
+<span class="fc" id="L462">                rs.getLong(&quot;budget_amount&quot;),</span>
+<span class="fc" id="L463">                rs.getLong(&quot;spent&quot;));</span>
+    }
+
+    private static SubtotalRow mapSubtotalRow(ResultSet rs) throws SQLException {
+<span class="fc" id="L467">        return new SubtotalRow(</span>
+<span class="fc" id="L468">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L469">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L470">                rs.getBoolean(&quot;category_archived&quot;),</span>
+<span class="fc" id="L471">                typeOf(rs.getString(&quot;type&quot;)),</span>
+<span class="fc" id="L472">                rs.getLong(&quot;subtotal&quot;));</span>
+    }
+
+    private static TableRow mapTableRow(ResultSet rs) throws SQLException {
+<span class="fc" id="L476">        return new TableRow(</span>
+<span class="fc" id="L477">                rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L478">                rs.getObject(&quot;date&quot;, LocalDate.class),</span>
+<span class="fc" id="L479">                typeOf(rs.getString(&quot;type&quot;)).name(),</span>
+<span class="fc" id="L480">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L481">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L482">                rs.getString(&quot;description&quot;),</span>
+<span class="fc" id="L483">                rs.getLong(&quot;amount&quot;));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

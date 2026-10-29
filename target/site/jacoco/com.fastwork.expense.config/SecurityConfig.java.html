@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.config;
+
+import java.io.IOException;
+import java.util.List;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fastwork.expense.common.ApiError;
+import com.fastwork.expense.user.PetUserDetailsService;
+
+@Configuration
+@EnableMethodSecurity
+@ConfigurationProperties(prefix = &quot;app.security&quot;)
+<span class="fc" id="L43">public class SecurityConfig {</span>
+
+        static final String CSP = &quot;default-src 'self'; &quot;
+                        + &quot;base-uri 'self'; &quot;
+                        + &quot;object-src 'none'; &quot;
+                        + &quot;frame-ancestors 'none'; &quot;
+                        + &quot;img-src 'self' data: blob:; &quot;
+                        + &quot;style-src 'self' 'unsafe-inline'; &quot;
+                        + &quot;script-src 'self'; &quot;
+                        + &quot;connect-src 'self'; &quot;
+                        + &quot;form-action 'self'&quot;;
+
+<span class="fc" id="L55">        private boolean hstsEnabled = true;</span>
+
+        public void setHstsEnabled(boolean hstsEnabled) {
+<span class="fc" id="L58">                this.hstsEnabled = hstsEnabled;</span>
+<span class="fc" id="L59">        }</span>
+
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+<span class="fc" id="L63">                return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();</span>
+        }
+
+        @Bean
+        public AuthenticationManager authenticationManager(
+                        PetUserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+<span class="fc" id="L69">                DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);</span>
+<span class="fc" id="L70">                provider.setPasswordEncoder(passwordEncoder);</span>
+<span class="fc" id="L71">                provider.setHideUserNotFoundExceptions(true);</span>
+<span class="fc" id="L72">                return new ProviderManager(provider);</span>
+        }
+
+        @Bean
+        public SecurityContextRepository securityContextRepository() {
+<span class="fc" id="L77">                return new HttpSessionSecurityContextRepository();</span>
+        }
+
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+<span class="fc" id="L82">                CorsConfiguration configuration = new CorsConfiguration();</span>
+
+<span class="fc" id="L84">                configuration.setAllowedOrigins(</span>
+<span class="fc" id="L85">                                List.of(</span>
+                                                &quot;https://personal-expense-4zg.pages.dev&quot;,
+                                                &quot;http://localhost:3000&quot;));
+
+<span class="fc" id="L89">                configuration.setAllowedMethods(</span>
+<span class="fc" id="L90">                                List.of(</span>
+                                                &quot;GET&quot;,
+                                                &quot;POST&quot;,
+                                                &quot;PUT&quot;,
+                                                &quot;PATCH&quot;,
+                                                &quot;DELETE&quot;,
+                                                &quot;OPTIONS&quot;));
+
+<span class="fc" id="L98">                configuration.setAllowedHeaders(</span>
+<span class="fc" id="L99">                                List.of(</span>
+                                                &quot;Content-Type&quot;,
+                                                &quot;X-XSRF-TOKEN&quot;,
+                                                &quot;X-CSRF-TOKEN&quot;,
+                                                &quot;Accept&quot;));
+
+<span class="fc" id="L105">                configuration.setAllowCredentials(true);</span>
+<span class="fc" id="L106">                configuration.setMaxAge(3600L);</span>
+
+<span class="fc" id="L108">                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();</span>
+
+<span class="fc" id="L110">                source.registerCorsConfiguration(&quot;/**&quot;, configuration);</span>
+
+<span class="fc" id="L112">                return source;</span>
+        }
+
+        @Bean
+        public SecurityFilterChain filterChain(
+                        HttpSecurity http,
+                        SecurityContextRepository securityContextRepository,
+                        ObjectMapper objectMapper)
+                        throws Exception {
+
+<span class="fc" id="L122">                CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();</span>
+<span class="fc" id="L123">                csrfTokenRepository.setCookieCustomizer(cookie -&gt; {</span>
+<span class="fc" id="L124">                        cookie.path(&quot;/&quot;);</span>
+<span class="fc" id="L125">                        cookie.sameSite(&quot;Lax&quot;);</span>
+<span class="fc" id="L126">                        cookie.secure(true); // Wajib untuk HTTPS (Production)</span>
+<span class="fc" id="L127">                });</span>
+
+<span class="fc" id="L129">                http</span>
+<span class="fc" id="L130">                                .cors(cors -&gt; cors.configurationSource(corsConfigurationSource()))</span>
+<span class="fc" id="L131">                                .securityContext(sc -&gt; sc.securityContextRepository(securityContextRepository))</span>
+<span class="fc" id="L132">                                .sessionManagement(</span>
+<span class="fc" id="L133">                                                sm -&gt; sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)</span>
+<span class="fc" id="L134">                                                                .sessionFixation(</span>
+<span class="fc" id="L135">                                                                                fixation -&gt; fixation.changeSessionId()))</span>
+<span class="fc" id="L136">                                .requestCache(cache -&gt; cache.disable())</span>
+<span class="fc" id="L137">                                .formLogin(form -&gt; form.disable())</span>
+<span class="fc" id="L138">                                .httpBasic(basic -&gt; basic.disable())</span>
+<span class="fc" id="L139">                                .logout(logout -&gt; logout.disable())</span>
+<span class="fc" id="L140">                                .csrf(</span>
+<span class="fc" id="L141">                                                csrf -&gt; csrf.csrfTokenRepository(csrfTokenRepository)</span>
+<span class="fc" id="L142">                                                                .csrfTokenRequestHandler(</span>
+                                                                                new SpaCsrfTokenRequestHandler()))
+<span class="fc" id="L144">                                .addFilterAfter(</span>
+                                                new CsrfCookieFilter(),
+                                                org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class)
+<span class="fc" id="L147">                                .addFilterAfter(</span>
+                                                new com.fastwork.expense.observability.UserContextMdcFilter(),
+                                                org.springframework.security.web.context.SecurityContextHolderFilter.class)
+<span class="fc" id="L150">                                .headers(</span>
+<span class="fc" id="L151">                                                headers -&gt; headers</span>
+<span class="fc" id="L152">                                                                .contentSecurityPolicy(csp -&gt; csp.policyDirectives(CSP))</span>
+<span class="fc" id="L153">                                                                .frameOptions(frame -&gt; frame.deny())</span>
+<span class="fc" id="L154">                                                                .referrerPolicy(</span>
+<span class="fc" id="L155">                                                                                referrer -&gt; referrer.policy(</span>
+                                                                                                ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+<span class="fc" id="L157">                                                                .httpStrictTransportSecurity(</span>
+                                                                                hsts -&gt; {
+<span class="fc" id="L159">                                                                                        hsts.includeSubDomains(true)</span>
+<span class="fc" id="L160">                                                                                                        .maxAgeInSeconds(</span>
+                                                                                                                        31536000);
+<span class="fc bfc" id="L162" title="All 2 branches covered.">                                                                                        if (!hstsEnabled) {</span>
+<span class="fc" id="L163">                                                                                                hsts.disable();</span>
+                                                                                        }
+<span class="fc" id="L165">                                                                                }))</span>
+<span class="fc" id="L166">                                .authorizeHttpRequests(</span>
+<span class="fc" id="L167">                                                auth -&gt; auth.requestMatchers(</span>
+                                                                &quot;/api/v1/health&quot;,
+                                                                &quot;/api/v1/auth/login&quot;,
+                                                                &quot;/api/v1/auth/reset-password&quot;,
+                                                                &quot;/actuator/health&quot;,
+                                                                &quot;/actuator/health/**&quot;,
+                                                                &quot;/v3/api-docs&quot;,
+                                                                &quot;/v3/api-docs/**&quot;,
+                                                                &quot;/swagger-ui.html&quot;,
+                                                                &quot;/swagger-ui/**&quot;)
+<span class="fc" id="L177">                                                                .permitAll()</span>
+<span class="fc" id="L178">                                                                .anyRequest()</span>
+<span class="fc" id="L179">                                                                .authenticated())</span>
+<span class="fc" id="L180">                                .exceptionHandling(</span>
+<span class="fc" id="L181">                                                errors -&gt; errors.authenticationEntryPoint(</span>
+<span class="fc" id="L182">                                                                (request, response, ex) -&gt; writeError(</span>
+                                                                                response,
+                                                                                objectMapper,
+                                                                                HttpStatus.UNAUTHORIZED,
+                                                                                &quot;UNAUTHORIZED&quot;))
+<span class="fc" id="L187">                                                                .accessDeniedHandler(</span>
+<span class="fc" id="L188">                                                                                (request, response, ex) -&gt; writeError(</span>
+                                                                                                response,
+                                                                                                objectMapper,
+                                                                                                HttpStatus.FORBIDDEN,
+                                                                                                &quot;FORBIDDEN&quot;)));
+
+<span class="fc" id="L194">                return http.build();</span>
+        }
+
+        private static void writeError(
+                        HttpServletResponse response, ObjectMapper objectMapper, HttpStatus status, String code)
+                        throws IOException {
+<span class="fc" id="L200">                response.setStatus(status.value());</span>
+<span class="fc" id="L201">                response.setContentType(MediaType.APPLICATION_JSON_VALUE);</span>
+<span class="fc" id="L202">                response.setCharacterEncoding(&quot;UTF-8&quot;);</span>
+<span class="fc" id="L203">                objectMapper.writeValue(</span>
+<span class="fc" id="L204">                                response.getOutputStream(),</span>
+<span class="fc" id="L205">                                ApiError.of(</span>
+                                                code,
+<span class="fc bfc" id="L207" title="All 2 branches covered.">                                                HttpStatus.UNAUTHORIZED.equals(status)</span>
+<span class="fc" id="L208">                                                                ? &quot;Tidak terautentikasi&quot;</span>
+<span class="fc" id="L209">                                                                : &quot;Akses ditolak&quot;));</span>
+<span class="fc" id="L210">        }</span>
+
+        private static final class CsrfCookieFilter extends OncePerRequestFilter {
+                @Override
+                protected void doFilterInternal(
+                                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                                throws ServletException, IOException {
+<span class="fc" id="L217">                        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">                        if (csrfToken != null) {</span>
+<span class="fc" id="L219">                                csrfToken.getToken();</span>
+                        }
+<span class="fc" id="L221">                        filterChain.doFilter(request, response);</span>
+<span class="fc" id="L222">                }</span>
+        }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

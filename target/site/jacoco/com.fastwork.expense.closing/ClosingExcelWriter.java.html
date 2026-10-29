@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClosingExcelWriter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.closing</a> &gt; <span class="el_source">ClosingExcelWriter.java</span></div><h1>ClosingExcelWriter.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.closing;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormat;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+
+public final class ClosingExcelWriter {
+
+    private static final int HEADER_ROW = 5;
+    private static final int COLS = 7;
+<span class="fc" id="L20">    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern(&quot;dd/MM/yyyy&quot;);</span>
+<span class="fc" id="L21">    private static final String[] HEADERS =</span>
+            new String[] {
+                &quot;Tanggal&quot;, &quot;Jenis&quot;, &quot;Kategori&quot;, &quot;Keterangan&quot;, &quot;Jumlah&quot;, &quot;Budget&quot;, &quot;Selisih&quot;
+            };
+
+    private ClosingExcelWriter() {}
+
+    public static byte[] write(ClosingExport export) throws IOException {
+<span class="fc" id="L29">        SXSSFWorkbook workbook = new SXSSFWorkbook(100);</span>
+        try {
+<span class="fc" id="L31">            SXSSFSheet sheet = workbook.createSheet(&quot;Arsip&quot;);</span>
+<span class="fc" id="L32">            CellStyle bold = boldStyle(workbook);</span>
+<span class="fc" id="L33">            CellStyle money = numberStyle(workbook, &quot;#,##0&quot;);</span>
+<span class="fc" id="L34">            CellStyle dateStyle = numberStyle(workbook, &quot;dd/mm/yyyy&quot;);</span>
+
+<span class="fc" id="L36">            ClosingRecord record = export.record();</span>
+<span class="fc" id="L37">            label(sheet, 0, 0, &quot;Periode&quot;, bold);</span>
+<span class="fc" id="L38">            label(</span>
+                    sheet,
+                    0,
+                    1,
+<span class="fc" id="L42">                    DAY.format(record.periodStart()) + &quot; - &quot; + DAY.format(record.periodEnd()),</span>
+                    null);
+<span class="fc" id="L44">            label(sheet, 1, 0, &quot;Total Pemasukan&quot;, null);</span>
+<span class="fc" id="L45">            number(sheet, 1, 1, record.totalIncome(), money);</span>
+<span class="fc" id="L46">            label(sheet, 2, 0, &quot;Total Pengeluaran&quot;, null);</span>
+<span class="fc" id="L47">            number(sheet, 2, 1, record.totalExpense(), money);</span>
+<span class="fc" id="L48">            label(sheet, 3, 0, &quot;Selisih&quot;, null);</span>
+<span class="fc" id="L49">            number(sheet, 3, 1, record.net(), money);</span>
+
+<span class="fc bfc" id="L51" title="All 2 branches covered.">            for (int col = 0; col &lt; COLS; col++) {</span>
+<span class="fc" id="L52">                label(sheet, HEADER_ROW, col, HEADERS[col], bold);</span>
+            }
+
+<span class="fc" id="L55">            int row = HEADER_ROW + 1;</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">            for (ClosingExport.ExportRow item : export.rows()) {</span>
+<span class="fc" id="L57">                Row excelRow = sheet.createRow(row);</span>
+<span class="fc" id="L58">                Cell dateCell = excelRow.createCell(0);</span>
+<span class="fc" id="L59">                dateCell.setCellValue(item.date());</span>
+<span class="fc" id="L60">                dateCell.setCellStyle(dateStyle);</span>
+<span class="fc" id="L61">                label(sheet, row, 1, jenisOf(item.type()), null);</span>
+<span class="fc" id="L62">                label(</span>
+                        sheet,
+                        row,
+                        2,
+<span class="fc bfc" id="L66" title="All 2 branches covered.">                        item.categoryName() == null ? &quot;-&quot; : safe(item.categoryName()),</span>
+                        null);
+<span class="fc" id="L68">                label(sheet, row, 3, safe(item.description()), null);</span>
+<span class="fc" id="L69">                number(sheet, row, 4, item.amount(), money);</span>
+<span class="fc" id="L70">                row++;</span>
+<span class="fc" id="L71">            }</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">            int lastDataRow = export.rows().isEmpty() ? HEADER_ROW : row - 1;</span>
+
+<span class="fc bfc" id="L74" title="All 2 branches covered.">            for (ClosingExport.CategorySubtotal subtotal : export.subtotals()) {</span>
+<span class="fc" id="L75">                label(</span>
+                        sheet,
+                        row,
+                        2,
+<span class="fc bfc" id="L79" title="All 2 branches covered.">                        subtotal.categoryName() == null ? &quot;-&quot; : safe(subtotal.categoryName()),</span>
+                        bold);
+<span class="fc" id="L81">                label(sheet, row, 3, &quot;Subtotal&quot;, bold);</span>
+<span class="fc" id="L82">                number(sheet, row, 4, subtotal.subtotal(), money);</span>
+<span class="fc bfc" id="L83" title="All 2 branches covered.">                if (subtotal.budgetAmount() != null) {</span>
+<span class="fc" id="L84">                    number(sheet, row, 5, subtotal.budgetAmount(), money);</span>
+                }
+<span class="fc bfc" id="L86" title="All 2 branches covered.">                if (subtotal.difference() != null) {</span>
+<span class="fc" id="L87">                    number(sheet, row, 6, subtotal.difference(), money);</span>
+                }
+<span class="fc" id="L89">                row++;</span>
+<span class="fc" id="L90">            }</span>
+
+<span class="fc" id="L92">            label(sheet, row, 3, &quot;Grand Total&quot;, bold);</span>
+<span class="fc" id="L93">            long grandAmounts = 0;</span>
+<span class="fc" id="L94">            Long grandBudget = null;</span>
+<span class="fc" id="L95">            Long grandDifference = null;</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">            for (ClosingExport.CategorySubtotal subtotal : export.subtotals()) {</span>
+<span class="fc" id="L97">                grandAmounts += subtotal.subtotal();</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">                if (subtotal.budgetAmount() != null) {</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">                    grandBudget = (grandBudget == null ? 0 : grandBudget) + subtotal.budgetAmount();</span>
+                    grandDifference =
+<span class="fc bfc" id="L101" title="All 2 branches covered.">                            (grandDifference == null ? 0 : grandDifference) + subtotal.difference();</span>
+                }
+<span class="fc" id="L103">            }</span>
+<span class="fc" id="L104">            number(sheet, row, 4, grandAmounts, money);</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">            if (grandBudget != null) {</span>
+<span class="fc" id="L106">                number(sheet, row, 5, grandBudget, money);</span>
+<span class="fc" id="L107">                number(sheet, row, 6, grandDifference, money);</span>
+            }
+
+<span class="fc" id="L110">            sheet.createFreezePane(0, HEADER_ROW + 1);</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">            if (!export.rows().isEmpty()) {</span>
+<span class="fc" id="L112">                sheet.setAutoFilter(new CellRangeAddress(HEADER_ROW, lastDataRow, 0, COLS - 1));</span>
+            }
+<span class="fc" id="L114">            widths(sheet);</span>
+
+<span class="fc" id="L116">            ByteArrayOutputStream out = new ByteArrayOutputStream();</span>
+<span class="fc" id="L117">            workbook.write(out);</span>
+<span class="fc" id="L118">            return out.toByteArray();</span>
+        } finally {
+<span class="fc" id="L120">            workbook.dispose();</span>
+<span class="fc" id="L121">            workbook.close();</span>
+        }
+    }
+
+    private static void widths(SXSSFSheet sheet) {
+<span class="fc" id="L126">        int[] widths = new int[] {12, 12, 28, 36, 16, 16, 16};</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        for (int col = 0; col &lt; widths.length; col++) {</span>
+<span class="fc" id="L128">            sheet.setColumnWidth(col, widths[col] * 256);</span>
+        }
+<span class="fc" id="L130">    }</span>
+
+    private static String jenisOf(String type) {
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        return &quot;INCOME&quot;.equals(type) ? &quot;pemasukan&quot; : &quot;pengeluaran&quot;;</span>
+    }
+
+    private static String safe(String text) {
+<span class="fc bfc" id="L137" title="All 4 branches covered.">        if (text == null || text.isEmpty()) {</span>
+<span class="fc" id="L138">            return text;</span>
+        }
+<span class="fc" id="L140">        char first = text.charAt(0);</span>
+<span class="fc bfc" id="L141" title="All 12 branches covered.">        if (first == '='</span>
+                || first == '+'
+                || first == '-'
+                || first == '@'
+                || first == '\t'
+                || first == '\r') {
+<span class="fc" id="L147">            return &quot;'&quot; + text;</span>
+        }
+<span class="fc" id="L149">        return text;</span>
+    }
+
+    private static CellStyle boldStyle(SXSSFWorkbook workbook) {
+<span class="fc" id="L153">        Font font = workbook.createFont();</span>
+<span class="fc" id="L154">        font.setBold(true);</span>
+<span class="fc" id="L155">        CellStyle style = workbook.createCellStyle();</span>
+<span class="fc" id="L156">        style.setFont(font);</span>
+<span class="fc" id="L157">        return style;</span>
+    }
+
+    private static CellStyle numberStyle(SXSSFWorkbook workbook, String pattern) {
+<span class="fc" id="L161">        DataFormat format = workbook.createDataFormat();</span>
+<span class="fc" id="L162">        CellStyle style = workbook.createCellStyle();</span>
+<span class="fc" id="L163">        style.setDataFormat(format.getFormat(pattern));</span>
+<span class="fc" id="L164">        return style;</span>
+    }
+
+    private static void label(SXSSFSheet sheet, int row, int col, String text, CellStyle style) {
+<span class="fc" id="L168">        Cell cell = row(sheet, row).createCell(col);</span>
+<span class="fc bfc" id="L169" title="All 4 branches covered.">        String value = text == null || text.isEmpty() ? null : text;</span>
+<span class="fc bfc" id="L170" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L171">            cell.setCellValue(value);</span>
+        }
+<span class="fc bfc" id="L173" title="All 2 branches covered.">        if (style != null) {</span>
+<span class="fc" id="L174">            cell.setCellStyle(style);</span>
+        }
+<span class="fc" id="L176">    }</span>
+
+    private static void number(SXSSFSheet sheet, int row, int col, long value, CellStyle style) {
+<span class="fc" id="L179">        Cell cell = row(sheet, row).createCell(col);</span>
+<span class="fc" id="L180">        cell.setCellValue((double) value);</span>
+<span class="fc" id="L181">        cell.setCellStyle(style);</span>
+<span class="fc" id="L182">    }</span>
+
+    private static Row row(SXSSFSheet sheet, int index) {
+<span class="fc" id="L185">        Row created = sheet.getRow(index);</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">        return created != null ? created : sheet.createRow(index);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

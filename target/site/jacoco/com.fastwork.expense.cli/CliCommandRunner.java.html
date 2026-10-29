@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CliCommandRunner.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.cli</a> &gt; <span class="el_source">CliCommandRunner.java</span></div><h1>CliCommandRunner.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.cli;
+
+import java.io.Console;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+
+import com.fastwork.expense.auth.PasswordResetService;
+import com.fastwork.expense.user.User;
+import com.fastwork.expense.user.UserRepository;
+import com.fastwork.expense.user.UserService;
+
+import lombok.RequiredArgsConstructor;
+
+@Component
+@RequiredArgsConstructor
+@Profile(&quot;cli&quot;)
+@Order(0)
+class CliCommandRunner implements ApplicationRunner {
+
+<span class="fc" id="L30">    private static final Logger log = LoggerFactory.getLogger(CliCommandRunner.class);</span>
+
+    private static final String ENV_PASSWORD = &quot;PET_INITIAL_PASSWORD&quot;;
+
+    private final UserService userService;
+    private final UserRepository userRepository;
+    private final PasswordResetService passwordResetService;
+    private final ConfigurableApplicationContext context;
+
+    @Override
+    public void run(ApplicationArguments args) {
+<span class="fc" id="L41">        List&lt;String&gt; argv = commandArgs(args.getSourceArgs());</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        if (argv.isEmpty()) {</span>
+<span class="fc" id="L43">            usage();</span>
+<span class="fc" id="L44">            exit(1);</span>
+<span class="fc" id="L45">            return;</span>
+        }
+        try {
+<span class="fc bfc" id="L48" title="All 5 branches covered.">            switch (argv.get(0)) {</span>
+<span class="fc" id="L49">                case &quot;create-user&quot; -&gt; createUser(argv.subList(1, argv.size()));</span>
+<span class="fc" id="L50">                case &quot;reset-password&quot; -&gt; resetPassword(argv.subList(1, argv.size()));</span>
+<span class="fc" id="L51">                case &quot;issue-reset-code&quot; -&gt; issueResetCode(argv.subList(1, argv.size()));</span>
+<span class="fc" id="L52">                case &quot;list-users&quot; -&gt; listUsers();</span>
+                default -&gt; {
+<span class="fc" id="L54">                    log.error(&quot;Perintah tidak dikenal: {}&quot;, argv.get(0));</span>
+<span class="fc" id="L55">                    usage();</span>
+<span class="fc" id="L56">                    exit(1);</span>
+                }
+            }
+<span class="fc" id="L59">        } catch (RuntimeException ex) {</span>
+<span class="fc" id="L60">            log.error(&quot;Gagal: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L61">            exit(1);</span>
+<span class="fc" id="L62">        }</span>
+<span class="fc" id="L63">    }</span>
+
+    private static List&lt;String&gt; commandArgs(String[] sourceArgs) {
+<span class="fc" id="L66">        List&lt;String&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L67">        int start = 0;</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        for (int i = 0; i &lt; sourceArgs.length; i++) {</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">            if (sourceArgs[i].endsWith(&quot;.jar&quot;)) {</span>
+<span class="fc" id="L70">                start = i + 1;</span>
+<span class="fc" id="L71">                break;</span>
+            }
+        }
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        for (int i = start; i &lt; sourceArgs.length; i++) {</span>
+<span class="fc" id="L75">            String arg = sourceArgs[i];</span>
+<span class="fc bfc" id="L76" title="All 4 branches covered.">            if (arg.startsWith(&quot;--&quot;) &amp;&amp; arg.contains(&quot;=&quot;)) continue;</span>
+<span class="fc" id="L77">            result.add(arg);</span>
+        }
+<span class="fc" id="L79">        return result;</span>
+    }
+
+    private void createUser(List&lt;String&gt; argv) {
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        if (argv.isEmpty()) {</span>
+<span class="fc" id="L84">            log.error(&quot;Usage: create-user &lt;email&gt; [--password &lt;password&gt;]&quot;);</span>
+<span class="fc" id="L85">            exit(1);</span>
+<span class="fc" id="L86">            return;</span>
+        }
+<span class="fc" id="L88">        User user = userService.createUser(argv.get(0), readPassword(argv));</span>
+<span class="fc" id="L89">        log.info(&quot;Pengguna dibuat: id={} email={}&quot;, user.getId(), user.getEmail());</span>
+<span class="fc" id="L90">        exit(0);</span>
+<span class="fc" id="L91">    }</span>
+
+    private void resetPassword(List&lt;String&gt; argv) {
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        if (argv.isEmpty()) {</span>
+<span class="fc" id="L95">            log.error(&quot;Usage: reset-password &lt;email&gt; [--password &lt;password&gt;]&quot;);</span>
+<span class="fc" id="L96">            exit(1);</span>
+<span class="fc" id="L97">            return;</span>
+        }
+<span class="fc" id="L99">        String email = UserService.normalizeEmail(argv.get(0));</span>
+<span class="fc" id="L100">        User user =</span>
+                userRepository
+<span class="fc" id="L102">                        .findByEmail(email)</span>
+<span class="fc" id="L103">                        .orElseThrow(</span>
+                                () -&gt;
+<span class="fc" id="L105">                                        new IllegalArgumentException(</span>
+                                                &quot;Pengguna tidak ditemukan: &quot; + email));
+<span class="fc" id="L107">        userService.setPassword(user, readPassword(argv));</span>
+<span class="fc" id="L108">        log.info(&quot;Password diperbarui untuk: {}&quot;, user.getEmail());</span>
+<span class="fc" id="L109">        exit(0);</span>
+<span class="fc" id="L110">    }</span>
+
+    private void issueResetCode(List&lt;String&gt; argv) {
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (argv.isEmpty()) {</span>
+<span class="fc" id="L114">            log.error(&quot;Usage: issue-reset-code &lt;email&gt;&quot;);</span>
+<span class="fc" id="L115">            exit(1);</span>
+<span class="fc" id="L116">            return;</span>
+        }
+<span class="fc" id="L118">        String email = UserService.normalizeEmail(argv.get(0));</span>
+<span class="fc" id="L119">        String code = passwordResetService.issue(email);</span>
+<span class="fc" id="L120">        log.info(</span>
+                &quot;Kode reset untuk {}: {} (berlaku {} menit, satu-kali)&quot;,
+                email,
+                code,
+<span class="fc" id="L124">                PasswordResetService.CODE_TTL.toMinutes());</span>
+<span class="fc" id="L125">        exit(0);</span>
+<span class="fc" id="L126">    }</span>
+
+    private void listUsers() {
+<span class="fc" id="L129">        userRepository</span>
+<span class="fc" id="L130">                .findAll()</span>
+<span class="fc" id="L131">                .forEach(</span>
+                        u -&gt;
+<span class="fc" id="L133">                                log.info(</span>
+                                        &quot;id={} email={} role={}&quot;,
+<span class="fc" id="L135">                                        u.getId(),</span>
+<span class="fc" id="L136">                                        u.getEmail(),</span>
+<span class="fc" id="L137">                                        u.getRole()));</span>
+<span class="fc" id="L138">        exit(0);</span>
+<span class="fc" id="L139">    }</span>
+
+    private String readPassword(List&lt;String&gt; argv) {
+<span class="fc bfc" id="L142" title="All 2 branches covered.">        for (int i = 1; i &lt; argv.size() - 1; i++) {</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">            if (&quot;--password&quot;.equals(argv.get(i))) {</span>
+<span class="fc" id="L144">                return argv.get(i + 1);</span>
+            }
+        }
+<span class="fc" id="L147">        String fromEnv = passwordFromEnvironment();</span>
+<span class="fc bfc" id="L148" title="All 4 branches covered.">        if (fromEnv != null &amp;&amp; !fromEnv.isBlank()) {</span>
+<span class="fc" id="L149">            return fromEnv;</span>
+        }
+<span class="fc" id="L151">        char[] typed = readConsolePassword(&quot;Password (minimal 12 karakter): &quot;);</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">        if (typed != null) {</span>
+<span class="fc" id="L153">            return new String(typed);</span>
+        }
+<span class="fc" id="L155">        throw new IllegalArgumentException(</span>
+                &quot;Password belum diberikan. Gunakan --password &lt;password&gt; atau env &quot;
+                        + ENV_PASSWORD
+                        + &quot;.&quot;);
+    }
+
+    /** Sejam testabilitas: sumber password non-interaktif (dapat dioverride di tes). */
+    String passwordFromEnvironment() {
+<span class="fc" id="L163">        return System.getenv(ENV_PASSWORD);</span>
+    }
+
+    /** Sejam testabilitas: baca password dari console interaktif bila ada. */
+    char[] readConsolePassword(String prompt) {
+<span class="fc" id="L168">        Console console = System.console();</span>
+<span class="pc bpc" id="L169" title="1 of 2 branches missed.">        return console == null ? null : console.readPassword(prompt);</span>
+    }
+
+    private static void usage() {
+<span class="fc" id="L173">        log.info(</span>
+<span class="fc" id="L174">                String.join(</span>
+<span class="fc" id="L175">                        System.lineSeparator(),</span>
+                        &quot;Perintah CLI:&quot;,
+                        &quot;  create-user &lt;email&gt; [--password &lt;password&gt;]&quot;,
+                        &quot;  reset-password &lt;email&gt; [--password &lt;password&gt;]&quot;,
+                        &quot;  issue-reset-code &lt;email&gt;&quot;,
+                        &quot;  list-users&quot;));
+<span class="fc" id="L181">    }</span>
+
+    /** Tutup konteks lalu akhiri proses; {@link #terminate} adalah seam agar tes tidak mematikan JVM. */
+    void exit(int code) {
+<span class="fc" id="L185">        SpringApplication.exit(context, () -&gt; code);</span>
+<span class="fc" id="L186">        terminate(code);</span>
+<span class="fc" id="L187">    }</span>
+
+    void terminate(int code) {
+<span class="nc" id="L190">        System.exit(code);</span>
+<span class="nc" id="L191">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

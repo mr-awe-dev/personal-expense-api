@@ -120,8 +120,11 @@ public class SecurityConfig {
                         throws Exception {
 
                 CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-                csrfTokenRepository.setCookieCustomizer(cookie -> cookie.path("/").sameSite("Lax"),
-                                cookie -> cookie.secure(true));
+                csrfTokenRepository.setCookieCustomizer(cookie -> {
+                        cookie.path("/");
+                        cookie.sameSite("Lax");
+                        cookie.secure(true); // Wajib untuk HTTPS (Production)
+                });
 
                 http
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

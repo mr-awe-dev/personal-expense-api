@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.common</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.common;
+
+import java.util.List;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponseException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+
+@RestControllerAdvice
+<span class="fc" id="L28">public class GlobalExceptionHandler {</span>
+
+<span class="fc" id="L30">    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);</span>
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity&lt;ApiError&gt; handleApiException(ApiException ex) {
+<span class="fc" id="L34">        ResponseEntity.BodyBuilder builder = ResponseEntity.status(ex.status());</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">        if (ex.retryAfterSeconds() != null) {</span>
+<span class="fc" id="L36">            builder.header(</span>
+                    org.springframework.http.HttpHeaders.RETRY_AFTER,
+<span class="fc" id="L38">                    ex.retryAfterSeconds().toString());</span>
+        }
+<span class="fc" id="L40">        return builder.body(ApiError.of(ex.code(), ex.getMessage()));</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ApiError&gt; handleValidation(MethodArgumentNotValidException ex) {
+<span class="fc" id="L45">        List&lt;ApiError.FieldError&gt; fieldErrors =</span>
+<span class="fc" id="L46">                ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L47">                        .map(GlobalExceptionHandler::toFieldError)</span>
+<span class="fc" id="L48">                        .toList();</span>
+<span class="fc" id="L49">        return ResponseEntity.badRequest()</span>
+<span class="fc" id="L50">                .body(ApiError.of(&quot;VALIDATION_ERROR&quot;, &quot;Data tidak valid&quot;, fieldErrors));</span>
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity&lt;ApiError&gt; handleParameterValidation(HandlerMethodValidationException ex) {
+<span class="fc" id="L55">        List&lt;ApiError.FieldError&gt; fieldErrors =</span>
+<span class="fc" id="L56">                ex.getParameterValidationResults().stream()</span>
+<span class="fc" id="L57">                        .flatMap(</span>
+                                result -&gt;
+<span class="fc" id="L59">                                        result.getResolvableErrors().stream()</span>
+<span class="fc" id="L60">                                                .map(</span>
+                                                        error -&gt;
+<span class="fc" id="L62">                                                                new ApiError.FieldError(</span>
+<span class="fc" id="L63">                                                                        result.getMethodParameter()</span>
+<span class="fc" id="L64">                                                                                .getParameterName(),</span>
+<span class="fc" id="L65">                                                                        error.getDefaultMessage())))</span>
+<span class="fc" id="L66">                        .toList();</span>
+<span class="fc" id="L67">        return ResponseEntity.badRequest()</span>
+<span class="fc" id="L68">                .body(ApiError.of(&quot;VALIDATION_ERROR&quot;, &quot;Data tidak valid&quot;, fieldErrors));</span>
+    }
+
+    @ExceptionHandler({
+        HttpMessageNotReadableException.class,
+        MethodArgumentTypeMismatchException.class,
+        MissingServletRequestParameterException.class,
+        org.springframework.web.multipart.support.MissingServletRequestPartException.class
+    })
+    public ResponseEntity&lt;ApiError&gt; handleMalformed(Exception ex) {
+<span class="fc" id="L78">        return ResponseEntity.badRequest()</span>
+<span class="fc" id="L79">                .body(ApiError.of(&quot;MALFORMED_REQUEST&quot;, &quot;Permintaan tidak dapat dibaca&quot;));</span>
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity&lt;ApiError&gt; handleTooLarge(
+            org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+<span class="fc" id="L85">        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)</span>
+<span class="fc" id="L86">                .body(ApiError.of(&quot;PAYLOAD_TOO_LARGE&quot;, &quot;Berkas melebihi batas ukuran&quot;));</span>
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity&lt;ApiError&gt; handleNoHandler(NoHandlerFoundException ex) {
+<span class="fc" id="L91">        return ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="fc" id="L92">                .body(ApiError.of(&quot;NOT_FOUND&quot;, &quot;Endpoint tidak ditemukan&quot;));</span>
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity&lt;ApiError&gt; handleNoResource(NoResourceFoundException ex) {
+<span class="fc" id="L97">        return ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="fc" id="L98">                .body(ApiError.of(&quot;NOT_FOUND&quot;, &quot;Endpoint tidak ditemukan&quot;));</span>
+    }
+
+    @ExceptionHandler(ErrorResponseException.class)
+    public ResponseEntity&lt;ApiError&gt; handleErrorResponse(ErrorResponseException ex) {
+<span class="fc" id="L103">        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        HttpStatus resolved = status == null ? HttpStatus.INTERNAL_SERVER_ERROR : status;</span>
+<span class="fc" id="L105">        return ResponseEntity.status(resolved)</span>
+<span class="fc" id="L106">                .body(ApiError.of(resolved.name(), ex.getBody().getDetail()));</span>
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity&lt;ApiError&gt; handleResponseStatus(ResponseStatusException ex) {
+<span class="fc" id="L111">        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">        HttpStatus resolved = status == null ? HttpStatus.INTERNAL_SERVER_ERROR : status;</span>
+<span class="fc" id="L113">        return ResponseEntity.status(resolved)</span>
+<span class="fc" id="L114">                .body(</span>
+<span class="fc" id="L115">                        ApiError.of(</span>
+<span class="fc" id="L116">                                resolved.name(),</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">                                ex.getReason() == null</span>
+<span class="fc" id="L118">                                        ? resolved.getReasonPhrase()</span>
+<span class="fc" id="L119">                                        : ex.getReason()));</span>
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity&lt;ApiError&gt; handleAccessDenied(AccessDeniedException ex) {
+<span class="fc" id="L124">        return ResponseEntity.status(HttpStatus.FORBIDDEN)</span>
+<span class="fc" id="L125">                .body(ApiError.of(&quot;FORBIDDEN&quot;, &quot;Akses ditolak&quot;));</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ApiError&gt; handleUnexpected(Exception ex, HttpServletRequest request) {
+<span class="fc" id="L130">        log.error(</span>
+                &quot;Unhandled exception method={} path={}&quot;,
+<span class="fc" id="L132">                request.getMethod(),</span>
+<span class="fc" id="L133">                request.getRequestURI(),</span>
+                ex);
+<span class="fc" id="L135">        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="fc" id="L136">                .body(ApiError.of(&quot;INTERNAL_ERROR&quot;, &quot;Terjadi kesalahan pada server&quot;));</span>
+    }
+
+    private static ApiError.FieldError toFieldError(FieldError error) {
+<span class="fc" id="L140">        String message = error.getDefaultMessage();</span>
+<span class="fc bfc" id="L141" title="All 4 branches covered.">        if (message != null &amp;&amp; message.startsWith(&quot;rpc.&quot;)) {</span>
+<span class="fc" id="L142">            message = message.substring(&quot;rpc.&quot;.length());</span>
+        }
+<span class="fc" id="L144">        return new ApiError.FieldError(error.getField(), message);</span>
+    }
+
+<span class="fc" id="L147">    public static final TypeReference&lt;List&lt;ApiError.FieldError&gt;&gt; FIELD_ERRORS =</span>
+<span class="fc" id="L148">            new TypeReference&lt;&gt;() {};</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
