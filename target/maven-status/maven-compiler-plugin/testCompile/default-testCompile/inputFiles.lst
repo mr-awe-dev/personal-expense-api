@@ -22,6 +22,7 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\config\ConfigJdbcAndCsrfUnitTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\config\HstsEnabledFlowTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\contract\OpenApiExportTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\ExpenseApplicationTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ExportImportFlowTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ExportImportUnitTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ImportScenariosFlowTest.java

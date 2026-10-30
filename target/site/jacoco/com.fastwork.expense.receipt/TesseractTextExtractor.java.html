@@ -27,57 +27,59 @@ public class TesseractTextExtractor implements TextExtractor {
 
     @Override
     public String extract(Path imageFile) {
-<span class="fc" id="L30">        List&lt;String&gt; command = List.of(</span>
-<span class="fc" id="L31">                props.getBinary(),</span>
-<span class="fc" id="L32">                imageFile.toString(),</span>
-                &quot;stdout&quot;,
-                &quot;-l&quot;,
-<span class="fc" id="L35">                props.getLanguages(),</span>
-                &quot;--psm&quot;,
-<span class="fc" id="L37">                props.getPsm());</span>
-<span class="fc" id="L38">        Process process = null;</span>
+<span class="fc" id="L30">        List&lt;String&gt; command =</span>
+<span class="fc" id="L31">                List.of(</span>
+<span class="fc" id="L32">                        props.getBinary(),</span>
+<span class="fc" id="L33">                        imageFile.toString(),</span>
+                        &quot;stdout&quot;,
+                        &quot;-l&quot;,
+<span class="fc" id="L36">                        props.getLanguages(),</span>
+                        &quot;--psm&quot;,
+<span class="fc" id="L38">                        props.getPsm());</span>
+<span class="fc" id="L39">        Process process = null;</span>
         try {
-<span class="fc" id="L40">            process = new ProcessBuilder(command).start();</span>
-<span class="fc" id="L41">            final Process proc = process;</span>
-<span class="fc" id="L42">            CompletableFuture&lt;byte[]&gt; errFuture = CompletableFuture.supplyAsync(() -&gt; readAll(proc.getErrorStream()));</span>
-<span class="fc" id="L43">            byte[] out = readAll(process.getInputStream());</span>
-<span class="fc" id="L44">            byte[] err = errFuture.join();</span>
-<span class="fc" id="L45">            boolean finished = process.waitFor(props.getTimeoutSeconds(), TimeUnit.SECONDS);</span>
-<span class="fc bfc" id="L46" title="All 2 branches covered.">            if (!finished) {</span>
-<span class="fc" id="L47">                process.destroyForcibly();</span>
-<span class="fc" id="L48">                throw new ReceiptOcrException(</span>
-<span class="fc" id="L49">                        &quot;tesseract timeout setelah &quot; + props.getTimeoutSeconds() + &quot;s&quot;);</span>
+<span class="fc" id="L41">            process = new ProcessBuilder(command).start();</span>
+<span class="fc" id="L42">            final Process proc = process;</span>
+<span class="fc" id="L43">            CompletableFuture&lt;byte[]&gt; errFuture =</span>
+<span class="fc" id="L44">                    CompletableFuture.supplyAsync(() -&gt; readAll(proc.getErrorStream()));</span>
+<span class="fc" id="L45">            byte[] out = readAll(process.getInputStream());</span>
+<span class="fc" id="L46">            byte[] err = errFuture.join();</span>
+<span class="fc" id="L47">            boolean finished = process.waitFor(props.getTimeoutSeconds(), TimeUnit.SECONDS);</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">            if (!finished) {</span>
+<span class="fc" id="L49">                process.destroyForcibly();</span>
+<span class="fc" id="L50">                throw new ReceiptOcrException(</span>
+<span class="fc" id="L51">                        &quot;tesseract timeout setelah &quot; + props.getTimeoutSeconds() + &quot;s&quot;);</span>
             }
-<span class="fc bfc" id="L51" title="All 2 branches covered.">            if (process.exitValue() != 0) {</span>
-<span class="fc" id="L52">                throw new ReceiptOcrException(</span>
-<span class="fc" id="L53">                        &quot;tesseract exit &quot; + process.exitValue() + &quot;: &quot; + tail(err));</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">            if (process.exitValue() != 0) {</span>
+<span class="fc" id="L54">                throw new ReceiptOcrException(</span>
+<span class="fc" id="L55">                        &quot;tesseract exit &quot; + process.exitValue() + &quot;: &quot; + tail(err));</span>
             }
-<span class="fc" id="L55">            return new String(out, StandardCharsets.UTF_8);</span>
-<span class="fc" id="L56">        } catch (IOException ex) {</span>
-<span class="fc" id="L57">            throw new ReceiptOcrException(&quot;tesseract tidak tersedia: &quot; + ex.getMessage(), ex);</span>
-<span class="fc" id="L58">        } catch (InterruptedException ex) {</span>
-<span class="fc" id="L59">            Thread.currentThread().interrupt();</span>
-<span class="fc" id="L60">            throw new ReceiptOcrException(&quot;tesseract terinterupsi&quot;, ex);</span>
+<span class="fc" id="L57">            return new String(out, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L58">        } catch (IOException ex) {</span>
+<span class="fc" id="L59">            throw new ReceiptOcrException(&quot;tesseract tidak tersedia: &quot; + ex.getMessage(), ex);</span>
+<span class="fc" id="L60">        } catch (InterruptedException ex) {</span>
+<span class="fc" id="L61">            Thread.currentThread().interrupt();</span>
+<span class="fc" id="L62">            throw new ReceiptOcrException(&quot;tesseract terinterupsi&quot;, ex);</span>
         } finally {
-<span class="fc bfc" id="L62" title="All 4 branches covered.">            if (process != null &amp;&amp; process.isAlive()) {</span>
-<span class="fc" id="L63">                process.destroyForcibly();</span>
+<span class="fc bfc" id="L64" title="All 4 branches covered.">            if (process != null &amp;&amp; process.isAlive()) {</span>
+<span class="fc" id="L65">                process.destroyForcibly();</span>
             }
         }
     }
 
     private static byte[] readAll(InputStream in) {
-<span class="fc" id="L69">        ByteArrayOutputStream buffer = new ByteArrayOutputStream();</span>
-<span class="fc" id="L70">        try (in) {</span>
-<span class="fc" id="L71">            in.transferTo(buffer);</span>
-<span class="fc" id="L72">        } catch (IOException ex) {</span>
-<span class="fc" id="L73">            log.debug(&quot;gagal membaca stream tesseract&quot;, ex);</span>
-<span class="fc" id="L74">        }</span>
-<span class="fc" id="L75">        return buffer.toByteArray();</span>
+<span class="fc" id="L71">        ByteArrayOutputStream buffer = new ByteArrayOutputStream();</span>
+<span class="fc" id="L72">        try (in) {</span>
+<span class="fc" id="L73">            in.transferTo(buffer);</span>
+<span class="fc" id="L74">        } catch (IOException ex) {</span>
+<span class="fc" id="L75">            log.debug(&quot;gagal membaca stream tesseract&quot;, ex);</span>
+<span class="fc" id="L76">        }</span>
+<span class="fc" id="L77">        return buffer.toByteArray();</span>
     }
 
     private static String tail(byte[] bytes) {
-<span class="fc" id="L79">        String text = new String(bytes, StandardCharsets.UTF_8).trim();</span>
-<span class="fc bfc" id="L80" title="All 2 branches covered.">        return text.length() &lt;= ERR_TAIL ? text : text.substring(text.length() - ERR_TAIL);</span>
+<span class="fc" id="L81">        String text = new String(bytes, StandardCharsets.UTF_8).trim();</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        return text.length() &lt;= ERR_TAIL ? text : text.substring(text.length() - ERR_TAIL);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

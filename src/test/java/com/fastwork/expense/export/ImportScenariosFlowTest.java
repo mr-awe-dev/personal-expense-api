@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -130,13 +129,13 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
     @Test
     void profileFieldsAreAppliedAndTrimmed() throws Exception {
         postImport(
-                importBody(
-                        "user",
-                        Map.of(
-                                "displayName", "  Baru  ",
-                                "timezone", " Asia/Makassar ",
-                                "dailyLimit", 45000L)),
-                session)
+                        importBody(
+                                "user",
+                                Map.of(
+                                        "displayName", "  Baru  ",
+                                        "timezone", " Asia/Makassar ",
+                                        "dailyLimit", 45000L)),
+                        session)
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/me").cookie(session))
@@ -196,7 +195,14 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                                 "categories",
                                 List.of(category(fileCategoryId, "expense", "makanan", false)),
                                 "transactions",
-                                List.of(transaction(txId, "2026-10-05", "expense", fileCategoryId, null, 5000L))),
+                                List.of(
+                                        transaction(
+                                                txId,
+                                                "2026-10-05",
+                                                "expense",
+                                                fileCategoryId,
+                                                null,
+                                                5000L))),
                         session)
                 .andExpect(status().isOk());
 
@@ -222,8 +228,7 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
 
         Map<String, Object> row =
                 jdbcClient
-                        .sql(
-                                "select name, archived, created_at from categories where id = :id")
+                        .sql("select name, archived, created_at from categories where id = :id")
                         .param("id", existing.getId())
                         .query(
                                 (rs, n) -> {
@@ -231,8 +236,7 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                                     value.put("name", rs.getString("name"));
                                     value.put("archived", rs.getBoolean("archived"));
                                     value.put(
-                                            "createdAt",
-                                            rs.getTimestamp("created_at").toInstant());
+                                            "createdAt", rs.getTimestamp("created_at").toInstant());
                                     return value;
                                 })
                         .single();
@@ -261,12 +265,7 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
     }
 
     private static Map<String, Object> transaction(
-            UUID id,
-            String date,
-            String type,
-            UUID categoryId,
-            UUID closingId,
-            Long amount) {
+            UUID id, String date, String type, UUID categoryId, UUID closingId, Long amount) {
         Map<String, Object> row = new LinkedHashMap<>();
         if (id != null) {
             row.put("id", id.toString());
@@ -289,8 +288,7 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
         return row;
     }
 
-    private static Map<String, Object> closing(
-            UUID id, String start, String end, String fileName) {
+    private static Map<String, Object> closing(UUID id, String start, String end, String fileName) {
         Map<String, Object> row = new LinkedHashMap<>();
         if (id != null) {
             row.put("id", id.toString());
@@ -311,20 +309,27 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
     void closingRowsAreValidatedStrictly() throws Exception {
         postImportExpect422(
                 importBody(
-                        "closings",
-                        List.of(closing(null, "2026-10-01", "2026-10-31", "a.xlsx"))),
+                        "closings", List.of(closing(null, "2026-10-01", "2026-10-31", "a.xlsx"))),
                 "id wajib ada");
         postImportExpect422(
-                importBody("closings", List.of(closing(UUID.randomUUID(), null, "2026-10-31", "a.xlsx"))),
+                importBody(
+                        "closings",
+                        List.of(closing(UUID.randomUUID(), null, "2026-10-31", "a.xlsx"))),
                 "periode");
         postImportExpect422(
-                importBody("closings", List.of(closing(UUID.randomUUID(), "2026-10-31", "2026-10-01", "a.xlsx"))),
+                importBody(
+                        "closings",
+                        List.of(closing(UUID.randomUUID(), "2026-10-31", "2026-10-01", "a.xlsx"))),
                 "periode");
         postImportExpect422(
-                importBody("closings", List.of(closing(UUID.randomUUID(), "2026-10-01", "2026-10-31", null))),
+                importBody(
+                        "closings",
+                        List.of(closing(UUID.randomUUID(), "2026-10-01", "2026-10-31", null))),
                 "file_name");
         postImportExpect422(
-                importBody("closings", List.of(closing(UUID.randomUUID(), "2026-10-01", "2026-10-31", "   "))),
+                importBody(
+                        "closings",
+                        List.of(closing(UUID.randomUUID(), "2026-10-01", "2026-10-31", "   "))),
                 "file_name");
     }
 
@@ -334,7 +339,12 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
         postImport(
                         importBody(
                                 "closings",
-                                List.of(closing(closingId, "2026-10-01", "2026-10-31", "arsip.xlsx"))),
+                                List.of(
+                                        closing(
+                                                closingId,
+                                                "2026-10-01",
+                                                "2026-10-31",
+                                                "arsip.xlsx"))),
                         session)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.closings").value(1));
@@ -344,7 +354,11 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                                 "closings",
                                 List.of(
                                         withTotals(
-                                                closing(closingId, "2026-10-01", "2026-10-28", "arsip2.xlsx"),
+                                                closing(
+                                                        closingId,
+                                                        "2026-10-01",
+                                                        "2026-10-28",
+                                                        "arsip2.xlsx"),
                                                 111L,
                                                 222L))),
                         session)
@@ -360,7 +374,8 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                 .isEqualTo(111L);
     }
 
-    private static Map<String, Object> withTotals(Map<String, Object> row, Long income, Long expense) {
+    private static Map<String, Object> withTotals(
+            Map<String, Object> row, Long income, Long expense) {
         row.put("totalIncome", income);
         row.put("totalExpense", expense);
         row.put("net", income - expense);
@@ -397,13 +412,18 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
     void budgetRowsAreValidatedStrictly() throws Exception {
         Category expense = categoryService.create(user.getId(), TxType.EXPENSE, "Makan");
         postImportExpect422(
-                importBody("budgets", List.of(budget(UUID.randomUUID(), expense.getId(), "MINGGUAN", 1L))),
+                importBody(
+                        "budgets",
+                        List.of(budget(UUID.randomUUID(), expense.getId(), "MINGGUAN", 1L))),
                 "period");
         postImportExpect422(
-                importBody("budgets", List.of(budget(UUID.randomUUID(), expense.getId(), null, 1L))),
+                importBody(
+                        "budgets", List.of(budget(UUID.randomUUID(), expense.getId(), null, 1L))),
                 "period");
         postImportExpect422(
-                importBody("budgets", List.of(budget(UUID.randomUUID(), expense.getId(), "daily", -5L))),
+                importBody(
+                        "budgets",
+                        List.of(budget(UUID.randomUUID(), expense.getId(), "daily", -5L))),
                 "amount");
         postImportExpect422(
                 importBody("budgets", List.of(budget(UUID.randomUUID(), null, "daily", 5L))),
@@ -415,7 +435,8 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                 "kategori yang tidak ada");
     }
 
-    private static Map<String, Object> budget(UUID id, UUID categoryId, String period, Long amount) {
+    private static Map<String, Object> budget(
+            UUID id, UUID categoryId, String period, Long amount) {
         Map<String, Object> row = new LinkedHashMap<>();
         if (id != null) {
             row.put("id", id.toString());
@@ -438,7 +459,9 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
         Category expense = categoryService.create(user.getId(), TxType.EXPENSE, "Makan");
         UUID budgetId = UUID.randomUUID();
         postImport(
-                        importBody("budgets", List.of(budget(budgetId, expense.getId(), "DAILY", null))),
+                        importBody(
+                                "budgets",
+                                List.of(budget(budgetId, expense.getId(), "DAILY", null))),
                         session)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.budgets").value(1));
@@ -462,12 +485,17 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
         Category dua = categoryService.create(user.getId(), TxType.EXPENSE, "Dua");
         UUID budgetId = UUID.randomUUID();
 
-        postImport(importBody("budgets", List.of(budget(budgetId, satu.getId(), "daily", 10L))), session)
+        postImport(
+                        importBody(
+                                "budgets", List.of(budget(budgetId, satu.getId(), "daily", 10L))),
+                        session)
                 .andExpect(status().isOk());
 
         // budget untuk kategori sama → update by category (ID file baru diabaikan)
         postImport(
-                        importBody("budgets", List.of(budget(UUID.randomUUID(), satu.getId(), "monthly", 20L))),
+                        importBody(
+                                "budgets",
+                                List.of(budget(UUID.randomUUID(), satu.getId(), "monthly", 20L))),
                         session)
                 .andExpect(status().isOk());
         assertThat(count("budgets", user.getId())).isEqualTo(1);
@@ -480,7 +508,9 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                 .isEqualTo(20L);
 
         // ID yang sama milik user tapi kategori lain → update by id
-        postImport(importBody("budgets", List.of(budget(budgetId, dua.getId(), "daily", 30L))), session)
+        postImport(
+                        importBody("budgets", List.of(budget(budgetId, dua.getId(), "daily", 30L))),
+                        session)
                 .andExpect(status().isOk());
         assertThat(
                         jdbcClient
@@ -493,7 +523,8 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
 
     @Test
     void budgetIdOwnedByOtherUserIsRejected() throws Exception {
-        Category foreignCategory = categoryService.create(other.getId(), TxType.EXPENSE, "Milik Lain");
+        Category foreignCategory =
+                categoryService.create(other.getId(), TxType.EXPENSE, "Milik Lain");
         UUID foreignBudget = UUID.randomUUID();
         jdbcClient
                 .sql(
@@ -517,29 +548,64 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
     void transactionRowsAreValidatedStrictly() throws Exception {
         Category expense = categoryService.create(user.getId(), TxType.EXPENSE, "Makan");
         postImportExpect422(
-                importBody("transactions", List.of(transaction(null, "2026-10-01", "expense", null, null, 5L))),
+                importBody(
+                        "transactions",
+                        List.of(transaction(null, "2026-10-01", "expense", null, null, 5L))),
                 "id wajib ada");
         postImportExpect422(
-                importBody("transactions", List.of(transaction(UUID.randomUUID(), null, "expense", null, null, 5L))),
+                importBody(
+                        "transactions",
+                        List.of(transaction(UUID.randomUUID(), null, "expense", null, null, 5L))),
                 "tanggal");
         postImportExpect422(
-                importBody("transactions", List.of(transaction(UUID.randomUUID(), "2026-10-01", "salah", null, null, 5L))),
+                importBody(
+                        "transactions",
+                        List.of(
+                                transaction(
+                                        UUID.randomUUID(), "2026-10-01", "salah", null, null, 5L))),
                 "tipe");
         postImportExpect422(
-                importBody("transactions", List.of(transaction(UUID.randomUUID(), "2026-10-01", null, null, null, 5L))),
+                importBody(
+                        "transactions",
+                        List.of(
+                                transaction(
+                                        UUID.randomUUID(), "2026-10-01", null, null, null, 5L))),
                 "tipe");
         postImportExpect422(
-                importBody("transactions", List.of(transaction(UUID.randomUUID(), "2026-10-01", "expense", expense.getId(), null, -1L))),
-                "amount");
-        postImportExpect422(
-                importBody("transactions", List.of(transaction(UUID.randomUUID(), "2026-10-01", "expense", expense.getId(), null, null))),
+                importBody(
+                        "transactions",
+                        List.of(
+                                transaction(
+                                        UUID.randomUUID(),
+                                        "2026-10-01",
+                                        "expense",
+                                        expense.getId(),
+                                        null,
+                                        -1L))),
                 "amount");
         postImportExpect422(
                 importBody(
                         "transactions",
                         List.of(
                                 transaction(
-                                        UUID.randomUUID(), "2026-10-01", "expense", expense.getId(), UUID.randomUUID(), 5L))),
+                                        UUID.randomUUID(),
+                                        "2026-10-01",
+                                        "expense",
+                                        expense.getId(),
+                                        null,
+                                        null))),
+                "amount");
+        postImportExpect422(
+                importBody(
+                        "transactions",
+                        List.of(
+                                transaction(
+                                        UUID.randomUUID(),
+                                        "2026-10-01",
+                                        "expense",
+                                        expense.getId(),
+                                        UUID.randomUUID(),
+                                        5L))),
                 "merujuk arsip");
     }
 
@@ -549,7 +615,14 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
         postImportExpect422(
                 importBody(
                         "transactions",
-                        List.of(transaction(UUID.randomUUID(), "2026-10-01", "income", expense.getId(), null, 5000L))),
+                        List.of(
+                                transaction(
+                                        UUID.randomUUID(),
+                                        "2026-10-01",
+                                        "income",
+                                        expense.getId(),
+                                        null,
+                                        5000L))),
                 "tipe kategori tidak sesuai");
     }
 
@@ -557,13 +630,18 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
     void uncategorizedAndNullDescriptionWork() throws Exception {
         UUID txId = UUID.randomUUID();
         postImport(
-                        importBody("transactions", List.of(transaction(txId, "2026-10-01", "expense", null, null, 1234L))),
+                        importBody(
+                                "transactions",
+                                List.of(
+                                        transaction(
+                                                txId, "2026-10-01", "expense", null, null, 1234L))),
                         session)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.transactions").value(1));
         assertThat(
                         jdbcClient
-                                .sql("select coalesce(description,'NULL') from transactions where id = :id")
+                                .sql(
+                                        "select coalesce(description,'NULL') from transactions where id = :id")
                                 .param("id", txId)
                                 .query(String.class)
                                 .single())
@@ -580,7 +658,13 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                                 List.of(closing(fileClosing, "2026-10-01", "2026-10-31", "a.xlsx")),
                                 "transactions",
                                 List.of(
-                                        transaction(txInFile, "2026-10-02", "expense", null, fileClosing, 999L))),
+                                        transaction(
+                                                txInFile,
+                                                "2026-10-02",
+                                                "expense",
+                                                null,
+                                                fileClosing,
+                                                999L))),
                         session)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.transactions").value(1))
@@ -592,7 +676,12 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                                 "transactions",
                                 List.of(
                                         transaction(
-                                                txPreexisting, "2026-10-03", "expense", null, fileClosing, 888L))),
+                                                txPreexisting,
+                                                "2026-10-03",
+                                                "expense",
+                                                null,
+                                                fileClosing,
+                                                888L))),
                         session)
                 .andExpect(status().isOk());
 
@@ -634,7 +723,11 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                                 "closings",
                                 List.of(
                                         withTotals(
-                                                closing(closingId, "2026-10-01", "2026-10-31", "ok.xlsx"),
+                                                closing(
+                                                        closingId,
+                                                        "2026-10-01",
+                                                        "2026-10-31",
+                                                        "ok.xlsx"),
                                                 10L,
                                                 20L))),
                         session)
@@ -660,7 +753,9 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
                         .andExpect(status().isOk())
                         .andExpect(
                                 MockMvcResultMatchers.header()
-                                        .string("Content-Disposition", org.hamcrest.Matchers.containsString("backup_")))
+                                        .string(
+                                                "Content-Disposition",
+                                                org.hamcrest.Matchers.containsString("backup_")))
                         .andReturn()
                         .getResponse()
                         .getContentAsByteArray();
@@ -707,7 +802,9 @@ class ImportScenariosFlowTest extends WebFlowTestBase {
     @Test
     void profilePartialFieldsOnlyTouchProvidedColumns() throws Exception {
         postImport(
-                        importBody("user", java.util.Collections.singletonMap("displayName", "Sebagian")),
+                        importBody(
+                                "user",
+                                java.util.Collections.singletonMap("displayName", "Sebagian")),
                         session)
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/me").cookie(session))

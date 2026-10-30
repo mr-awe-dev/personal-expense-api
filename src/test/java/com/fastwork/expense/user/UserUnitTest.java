@@ -13,14 +13,12 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.fastwork.expense.common.ApiException;
 
@@ -34,11 +32,11 @@ class UserUnitTest {
 
     @Test
     void normalizeEmailRejectsBlankAndLowercases() {
-        assertThat(UserService.normalizeEmail("  Campur@Contoh.COM ")).isEqualTo("campur@contoh.com");
+        assertThat(UserService.normalizeEmail("  Campur@Contoh.COM "))
+                .isEqualTo("campur@contoh.com");
         assertThatThrownBy(() -> UserService.normalizeEmail(null))
                 .isInstanceOfSatisfying(
-                        ApiException.class,
-                        ex -> assertThat(ex.code()).isEqualTo("INVALID_EMAIL"));
+                        ApiException.class, ex -> assertThat(ex.code()).isEqualTo("INVALID_EMAIL"));
         assertThatThrownBy(() -> UserService.normalizeEmail("   "))
                 .isInstanceOfSatisfying(
                         ApiException.class, ex -> assertThat(ex.code()).isEqualTo("INVALID_EMAIL"));
@@ -156,8 +154,7 @@ class UserUnitTest {
                 .isInstanceOfSatisfying(
                         ApiException.class, ex -> assertThat(ex.code()).isEqualTo("UNAUTHORIZED"));
 
-        Authentication anonymous =
-                new UsernamePasswordAuthenticationToken("anonymous", null);
+        Authentication anonymous = new UsernamePasswordAuthenticationToken("anonymous", null);
         setAuthentication(anonymous);
         assertThatThrownBy(service::principal)
                 .isInstanceOfSatisfying(
@@ -202,5 +199,4 @@ class UserUnitTest {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
     }
-
 }

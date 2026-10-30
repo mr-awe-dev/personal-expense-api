@@ -81,8 +81,7 @@ class ReceiptScanServiceUnitTest {
     @Test
     void oversizedFileRejectedWithReadableLimit() {
         props.setMaxImageBytes(10L);
-        MockMultipartFile big =
-                new MockMultipartFile("file", "x.png", "image/png", new byte[20]);
+        MockMultipartFile big = new MockMultipartFile("file", "x.png", "image/png", new byte[20]);
         assertThatThrownBy(() -> service().scan(big))
                 .isInstanceOfSatisfying(
                         ApiException.class,
@@ -98,7 +97,10 @@ class ReceiptScanServiceUnitTest {
                                 service()
                                         .scan(
                                                 new MockMultipartFile(
-                                                        "file", "x.bin", null, new byte[] {1, 2, 3})))
+                                                        "file",
+                                                        "x.bin",
+                                                        null,
+                                                        new byte[] {1, 2, 3})))
                 .isInstanceOfSatisfying(
                         ApiException.class, ex -> assertThat(ex.code()).isEqualTo("INVALID_IMAGE"));
 
@@ -118,7 +120,8 @@ class ReceiptScanServiceUnitTest {
     void undecodableImageFallsBackToSinglePass() {
         given(extractor.extract(any())).willReturn(LOW_CONFIDENCE);
         MockMultipartFile fake =
-                new MockMultipartFile("file", "x.jpg", "image/jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8});
+                new MockMultipartFile(
+                        "file", "x.jpg", "image/jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8});
 
         ReceiptScanResponse response = service().scan(fake);
 
@@ -205,7 +208,8 @@ class ReceiptScanServiceUnitTest {
                 new MockMultipartFile("file", "x.jpg", "image/jpeg", new byte[] {1, 2, 3});
         assertThatThrownBy(() -> service().scan(fake))
                 .isInstanceOfSatisfying(
-                        ApiException.class, ex -> assertThat(ex.code()).isEqualTo("RECEIPT_UNREADABLE"));
+                        ApiException.class,
+                        ex -> assertThat(ex.code()).isEqualTo("RECEIPT_UNREADABLE"));
     }
 
     @Test
@@ -232,7 +236,6 @@ class ReceiptScanServiceUnitTest {
         Path dir = Files.createTempDirectory(temp, "pakai-");
         Files.writeString(dir.resolve("isi.txt"), "x");
         // Direktori terisi tidak bisa dihapus → cabang IOException harus diam (tidak melempar).
-        ReflectionTestUtils.invokeMethod(
-                ReceiptScanService.class, "deleteQuietly", (Object) dir);
+        ReflectionTestUtils.invokeMethod(ReceiptScanService.class, "deleteQuietly", (Object) dir);
     }
 }

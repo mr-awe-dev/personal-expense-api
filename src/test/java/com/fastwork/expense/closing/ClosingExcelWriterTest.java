@@ -48,7 +48,8 @@ class ClosingExcelWriterTest {
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             Sheet sheet = workbook.getSheet("Arsip");
             assertThat(sheet).isNotNull();
-            assertThat(sheet.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Total Pemasukan");
+            assertThat(sheet.getRow(1).getCell(0).getStringCellValue())
+                    .isEqualTo("Total Pemasukan");
             assertThat(sheet.getRow(6).getCell(3).getStringCellValue()).isEqualTo("Grand Total");
         }
     }

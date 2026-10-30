@@ -29,6 +29,10 @@ class HstsEnabledFlowTest extends PostgresIntegrationTest {
     void contextBootsWithHstsEnabledAndServesHealth() throws Exception {
         mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Security-Policy", org.hamcrest.Matchers.containsString("default-src 'self'")));
+                .andExpect(
+                        header().string(
+                                        "Content-Security-Policy",
+                                        org.hamcrest.Matchers.containsString(
+                                                "default-src 'self'")));
     }
 }

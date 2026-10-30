@@ -1,7 +1,6 @@
 package com.fastwork.expense.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,8 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
-import org.springframework.web.ErrorResponseException;
-import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,14 +33,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.springframework.validation.annotation.Validated;
 
 class GlobalExceptionHandlerTest {
 
@@ -70,11 +66,9 @@ class GlobalExceptionHandlerTest {
     void validationErrorsStripRpcPrefixFromDefaultMessages() throws Exception {
         Method method = Holder.class.getMethod("method", String.class);
         MethodParameter parameter = new MethodParameter(method, 0);
-        BeanPropertyBindingResult binding =
-                new BeanPropertyBindingResult(new Holder(), "holder");
+        BeanPropertyBindingResult binding = new BeanPropertyBindingResult(new Holder(), "holder");
         binding.addError(new FieldError("holder", "name", null, false, null, null, "rpc.panjang"));
-        binding.addError(
-                new FieldError("holder", "other", null, false, null, null, "wajib diisi"));
+        binding.addError(new FieldError("holder", "other", null, false, null, null, "wajib diisi"));
         binding.addError(new FieldError("holder", "kosong", null, false, null, null, null));
 
         ResponseEntity<ApiError> response =
@@ -96,7 +90,8 @@ class GlobalExceptionHandlerTest {
                         parameter,
                         "",
                         java.util.List.of(
-                                new org.springframework.context.support.DefaultMessageSourceResolvable(
+                                new org.springframework.context.support
+                                        .DefaultMessageSourceResolvable(
                                         new String[] {"NotBlank"}, null, "wajib diisi")));
         org.springframework.validation.method.MethodValidationResult group =
                 org.springframework.validation.method.MethodValidationResult.create(
@@ -104,8 +99,8 @@ class GlobalExceptionHandlerTest {
 
         ResponseEntity<ApiError> response =
                 handler.handleParameterValidation(
-                        new org.springframework.web.method.annotation.HandlerMethodValidationException(
-                                group));
+                        new org.springframework.web.method.annotation
+                                .HandlerMethodValidationException(group));
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
         assertThat(response.getBody().fieldErrors())
@@ -158,7 +153,8 @@ class GlobalExceptionHandlerTest {
         assertThat(
                         handler.handleMalformed(
                                         new HttpMessageNotReadableException(
-                                                "x", (org.springframework.http.HttpInputMessage) null))
+                                                "x",
+                                                (org.springframework.http.HttpInputMessage) null))
                                 .getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
@@ -174,7 +170,8 @@ class GlobalExceptionHandlerTest {
     @Test
     void noHandlerAndNoResourceReturnNotFound() {
         assertThat(
-                        handler.handleNoHandler(new NoHandlerFoundException("GET", "/x", new HttpHeaders()))
+                        handler.handleNoHandler(
+                                        new NoHandlerFoundException("GET", "/x", new HttpHeaders()))
                                 .getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(
@@ -205,7 +202,8 @@ class GlobalExceptionHandlerTest {
         assertThat(withReason.getBody().message()).isEqualTo("Hilang");
 
         ResponseEntity<ApiError> withoutReason =
-                handler.handleResponseStatus(new ResponseStatusException(HttpStatusCode.valueOf(599)));
+                handler.handleResponseStatus(
+                        new ResponseStatusException(HttpStatusCode.valueOf(599)));
         assertThat(withoutReason.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(withoutReason.getBody().message())
                 .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -213,7 +211,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void accessDeniedReturnsForbidden() {
-        ResponseEntity<ApiError> response = handler.handleAccessDenied(new AccessDeniedException("x"));
+        ResponseEntity<ApiError> response =
+                handler.handleAccessDenied(new AccessDeniedException("x"));
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody().code()).isEqualTo("FORBIDDEN");
     }

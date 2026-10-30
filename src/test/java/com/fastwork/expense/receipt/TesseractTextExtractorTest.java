@@ -35,10 +35,7 @@ class TesseractTextExtractorTest {
             Files.writeString(file, "@echo off\r\n" + windowsBody + "\r\n", StandardCharsets.UTF_8);
         } else {
             file = temp.resolve(name + ".sh");
-            Files.writeString(
-                    file,
-                    "#!/bin/sh\n" + unixBody + "\n",
-                    StandardCharsets.UTF_8);
+            Files.writeString(file, "#!/bin/sh\n" + unixBody + "\n", StandardCharsets.UTF_8);
             file.toFile().setExecutable(true);
         }
         return file;
@@ -60,7 +57,11 @@ class TesseractTextExtractorTest {
 
     @Test
     void nonZeroExitIsOcrExceptionWithStderrTail() throws Exception {
-        Path script = script("fail", "echo GAGAL-OFFLINE 1>&2; exit 3", "echo GAGAL-OFFLINE 1>&2\r\nexit /b 3");
+        Path script =
+                script(
+                        "fail",
+                        "echo GAGAL-OFFLINE 1>&2; exit 3",
+                        "echo GAGAL-OFFLINE 1>&2\r\nexit /b 3");
         TesseractTextExtractor extractor = new TesseractTextExtractor(props(script.toString()));
         assertThatThrownBy(() -> extractor.extract(temp.resolve("x.jpg")))
                 .isInstanceOfSatisfying(
@@ -110,12 +111,17 @@ class TesseractTextExtractorTest {
                         ReceiptOcrException.class,
                         ex ->
                                 assertThat(ex.getMessage())
-                                        .isIn("tesseract terinterupsi", "tesseract timeout setelah 15s"));
+                                        .isIn(
+                                                "tesseract terinterupsi",
+                                                "tesseract timeout setelah 15s"));
         assertThat(Thread.interrupted()).isTrue();
     }
 
     private static String javaBinary() {
-        String exe = System.getProperty("os.name", "").toLowerCase().contains("win") ? "java.exe" : "java";
+        String exe =
+                System.getProperty("os.name", "").toLowerCase().contains("win")
+                        ? "java.exe"
+                        : "java";
         return Path.of(System.getProperty("java.home"), "bin", exe).toString();
     }
 
@@ -143,8 +149,7 @@ class TesseractTextExtractorTest {
         assertThatThrownBy(() -> extractor.extract(temp.resolve("x.jpg")))
                 .isInstanceOfSatisfying(
                         ReceiptOcrException.class,
-                        ex ->
-                                assertThat(ex.getMessage()).startsWith("tesseract tidak tersedia"));
+                        ex -> assertThat(ex.getMessage()).startsWith("tesseract tidak tersedia"));
     }
 
     @Test

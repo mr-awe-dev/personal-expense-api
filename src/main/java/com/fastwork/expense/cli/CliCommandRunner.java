@@ -180,7 +180,10 @@ class CliCommandRunner implements ApplicationRunner {
                         "  list-users"));
     }
 
-    /** Tutup konteks lalu akhiri proses; {@link #terminate} adalah seam agar tes tidak mematikan JVM. */
+    /**
+     * Tutup konteks lalu akhiri proses; {@link #terminate} adalah seam agar tes tidak mematikan
+     * JVM.
+     */
     void exit(int code) {
         SpringApplication.exit(context, () -> code);
         terminate(code);

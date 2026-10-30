@@ -52,8 +52,7 @@ class ReceiptImagePreprocessorTest {
     void preprocessReturnsFalseForUndecodableImage() throws Exception {
         Path source = temp.resolve("rusak.png");
         Files.write(source, new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
-        assertThat(ReceiptImagePreprocessor.preprocess(source, temp.resolve("out.png")))
-                .isFalse();
+        assertThat(ReceiptImagePreprocessor.preprocess(source, temp.resolve("out.png"))).isFalse();
     }
 
     @Test
@@ -150,7 +149,6 @@ class ReceiptImagePreprocessorTest {
         BufferedImage image = new BufferedImage(50, 50, BufferedImage.TYPE_BYTE_GRAY);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ImageIO.write(image, "png", out);
-        assertThat(ImageIO.read(new java.io.ByteArrayInputStream(out.toByteArray())))
-                .isNotNull();
+        assertThat(ImageIO.read(new java.io.ByteArrayInputStream(out.toByteArray()))).isNotNull();
     }
 }

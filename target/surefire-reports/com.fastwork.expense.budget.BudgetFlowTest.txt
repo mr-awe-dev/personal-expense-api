@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.fastwork.expense.budget.BudgetFlowTest
 -------------------------------------------------------------------------------
-Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.365 s -- in com.fastwork.expense.budget.BudgetFlowTest
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.089 s -- in com.fastwork.expense.budget.BudgetFlowTest

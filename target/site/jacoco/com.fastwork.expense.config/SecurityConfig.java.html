@@ -2,13 +2,14 @@
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Supplier;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -26,8 +27,10 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -39,9 +42,24 @@ import com.fastwork.expense.user.PetUserDetailsService;
 
 @Configuration
 @EnableMethodSecurity
-@ConfigurationProperties(prefix = &quot;app.security&quot;)
-<span class="fc" id="L43">public class SecurityConfig {</span>
+<span class="fc" id="L45">public class SecurityConfig {</span>
 
+        // 1. Best Practice: Gunakan @Value daripada @ConfigurationProperties untuk 1-2
+        // properti sederhana
+        // Hindari anti-pattern menggabungkan @Configuration dan
+        // @ConfigurationProperties di kelas yang sama.
+        @Value(&quot;${app.security.hsts-enabled:true}&quot;)
+        private boolean hstsEnabled;
+
+        // Opsional: Jika backend perlu menyebutkan URL-nya sendiri di CSP (Defense in
+        // Depth). Tanpa default URL spesifik deployment — lihat D36 (fail-fast).
+        @Value(&quot;${app.security.backend-url:}&quot;)
+        private String backendUrl;
+
+        // 2. Content Security Policy (CSP) yang ketat untuk API Backend
+        // Catatan: CSP paling krusial diatur di sisi Frontend (Cloudflare Pages).
+        // Di backend, ini berfungsi sebagai lapisan pertahanan tambahan (Defense in
+        // Depth).
         static final String CSP = &quot;default-src 'self'; &quot;
                         + &quot;base-uri 'self'; &quot;
                         + &quot;object-src 'none'; &quot;
@@ -49,67 +67,68 @@ import com.fastwork.expense.user.PetUserDetailsService;
                         + &quot;img-src 'self' data: blob:; &quot;
                         + &quot;style-src 'self' 'unsafe-inline'; &quot;
                         + &quot;script-src 'self'; &quot;
-                        + &quot;connect-src 'self'; &quot;
                         + &quot;form-action 'self'&quot;;
-
-<span class="fc" id="L55">        private boolean hstsEnabled = true;</span>
-
-        public void setHstsEnabled(boolean hstsEnabled) {
-<span class="fc" id="L58">                this.hstsEnabled = hstsEnabled;</span>
-<span class="fc" id="L59">        }</span>
 
         @Bean
         public PasswordEncoder passwordEncoder() {
-<span class="fc" id="L63">                return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();</span>
+                // Best Practice: Argon2 adalah standar emas saat ini untuk hashing password
+<span class="fc" id="L75">                return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();</span>
         }
 
         @Bean
         public AuthenticationManager authenticationManager(
                         PetUserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
-<span class="fc" id="L69">                DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);</span>
-<span class="fc" id="L70">                provider.setPasswordEncoder(passwordEncoder);</span>
-<span class="fc" id="L71">                provider.setHideUserNotFoundExceptions(true);</span>
-<span class="fc" id="L72">                return new ProviderManager(provider);</span>
+<span class="fc" id="L81">                DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);</span>
+<span class="fc" id="L82">                provider.setPasswordEncoder(passwordEncoder);</span>
+<span class="fc" id="L83">                provider.setHideUserNotFoundExceptions(true); // Mencegah User Enumeration Attack</span>
+<span class="fc" id="L84">                return new ProviderManager(provider);</span>
         }
 
         @Bean
         public SecurityContextRepository securityContextRepository() {
-<span class="fc" id="L77">                return new HttpSessionSecurityContextRepository();</span>
+<span class="fc" id="L89">                return new HttpSessionSecurityContextRepository();</span>
         }
 
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
-<span class="fc" id="L82">                CorsConfiguration configuration = new CorsConfiguration();</span>
+<span class="fc" id="L94">                CorsConfiguration configuration = new CorsConfiguration();</span>
 
-<span class="fc" id="L84">                configuration.setAllowedOrigins(</span>
-<span class="fc" id="L85">                                List.of(</span>
-                                                &quot;https://personal-expense-4zg.pages.dev&quot;,
-                                                &quot;http://localhost:3000&quot;));
+                // 3. Best Practice CORS: Gunakan setAllowedOriginPatterns untuk mendukung
+                // wildcard
+                // pada subdomain project Anda sendiri. Ini memungkinkan URL Preview Cloudflare
+                // Pages
+                // (misal: https://abc123.personal-expense-4zg.pages.dev) untuk mengakses
+                // backend
+                // tanpa perlu update kode setiap kali deploy, sambil tetap memblokir domain
+                // asing.
+<span class="fc" id="L104">                configuration.setAllowedOriginPatterns(</span>
+<span class="fc" id="L105">                                List.of(</span>
+                                                &quot;https://personal-expense-4zg.pages.dev&quot;, // Production FE
+                                                &quot;https://*.personal-expense-4zg.pages.dev&quot;, // Preview/Deploy FE
+                                                &quot;http://localhost:3000&quot;, // Local Dev (Next.js/Custom)
+                                                &quot;http://localhost:5173&quot; // Local Dev (Vite default)
+                                ));
 
-<span class="fc" id="L89">                configuration.setAllowedMethods(</span>
-<span class="fc" id="L90">                                List.of(</span>
-                                                &quot;GET&quot;,
-                                                &quot;POST&quot;,
-                                                &quot;PUT&quot;,
-                                                &quot;PATCH&quot;,
-                                                &quot;DELETE&quot;,
-                                                &quot;OPTIONS&quot;));
+<span class="fc" id="L112">                configuration.setAllowedMethods(</span>
+<span class="fc" id="L113">                                List.of(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;PATCH&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;));</span>
 
-<span class="fc" id="L98">                configuration.setAllowedHeaders(</span>
-<span class="fc" id="L99">                                List.of(</span>
+<span class="fc" id="L115">                configuration.setAllowedHeaders(</span>
+<span class="fc" id="L116">                                List.of(</span>
                                                 &quot;Content-Type&quot;,
+                                                &quot;Authorization&quot;,
                                                 &quot;X-XSRF-TOKEN&quot;,
                                                 &quot;X-CSRF-TOKEN&quot;,
-                                                &quot;Accept&quot;));
+                                                &quot;Accept&quot;,
+                                                &quot;Cache-Control&quot;));
 
-<span class="fc" id="L105">                configuration.setAllowCredentials(true);</span>
-<span class="fc" id="L106">                configuration.setMaxAge(3600L);</span>
+<span class="fc" id="L124">                configuration.setAllowCredentials(</span>
+<span class="fc" id="L125">                                true); // Wajib true karena kita menggunakan Cookie-based CSRF/Session</span>
+<span class="fc" id="L126">                configuration.setMaxAge(</span>
+<span class="fc" id="L127">                                3600L); // Cache preflight request selama 1 jam untuk optimalisasi performa</span>
 
-<span class="fc" id="L108">                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();</span>
-
-<span class="fc" id="L110">                source.registerCorsConfiguration(&quot;/**&quot;, configuration);</span>
-
-<span class="fc" id="L112">                return source;</span>
+<span class="fc" id="L129">                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();</span>
+<span class="fc" id="L130">                source.registerCorsConfiguration(&quot;/**&quot;, configuration);</span>
+<span class="fc" id="L131">                return source;</span>
         }
 
         @Bean
@@ -119,52 +138,100 @@ import com.fastwork.expense.user.PetUserDetailsService;
                         ObjectMapper objectMapper)
                         throws Exception {
 
-<span class="fc" id="L122">                CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();</span>
-<span class="fc" id="L123">                csrfTokenRepository.setCookieCustomizer(cookie -&gt; {</span>
-<span class="fc" id="L124">                        cookie.path(&quot;/&quot;);</span>
-<span class="fc" id="L125">                        cookie.sameSite(&quot;Lax&quot;);</span>
-<span class="fc" id="L126">                        cookie.secure(true); // Wajib untuk HTTPS (Production)</span>
-<span class="fc" id="L127">                });</span>
+                // 4. CSRF Configuration untuk SPA
+<span class="fc" id="L142">                CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();</span>
+<span class="fc" id="L143">                csrfTokenRepository.setCookieCustomizer(</span>
+                                cookie -&gt; {
+<span class="fc" id="L145">                                        cookie.path(&quot;/&quot;);</span>
+<span class="fc" id="L146">                                        cookie.sameSite(</span>
+                                                        &quot;Lax&quot;); // Lax aman untuk navigasi normal, ganti &quot;Strict&quot; jika
+                                                                // ingin
+                                        // lebih ketat
+<span class="fc" id="L150">                                        cookie.secure(true); // Wajib true untuk HTTPS production</span>
+<span class="fc" id="L151">                                });</span>
 
-<span class="fc" id="L129">                http</span>
-<span class="fc" id="L130">                                .cors(cors -&gt; cors.configurationSource(corsConfigurationSource()))</span>
-<span class="fc" id="L131">                                .securityContext(sc -&gt; sc.securityContextRepository(securityContextRepository))</span>
-<span class="fc" id="L132">                                .sessionManagement(</span>
-<span class="fc" id="L133">                                                sm -&gt; sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)</span>
-<span class="fc" id="L134">                                                                .sessionFixation(</span>
-<span class="fc" id="L135">                                                                                fixation -&gt; fixation.changeSessionId()))</span>
-<span class="fc" id="L136">                                .requestCache(cache -&gt; cache.disable())</span>
-<span class="fc" id="L137">                                .formLogin(form -&gt; form.disable())</span>
-<span class="fc" id="L138">                                .httpBasic(basic -&gt; basic.disable())</span>
-<span class="fc" id="L139">                                .logout(logout -&gt; logout.disable())</span>
-<span class="fc" id="L140">                                .csrf(</span>
-<span class="fc" id="L141">                                                csrf -&gt; csrf.csrfTokenRepository(csrfTokenRepository)</span>
-<span class="fc" id="L142">                                                                .csrfTokenRequestHandler(</span>
-                                                                                new SpaCsrfTokenRequestHandler()))
-<span class="fc" id="L144">                                .addFilterAfter(</span>
+                // Bangun CSP dinamis: connect-src hanya diperluas jika backend-url diisi,
+                // tanpa hardcode URL pribadi deployment.
+<span class="fc" id="L155">                String finalCsp = cspDirectives(backendUrl);</span>
+
+<span class="fc" id="L157">                http</span>
+                                // CORS
+<span class="fc" id="L159">                                .cors(cors -&gt; cors.configurationSource(corsConfigurationSource()))</span>
+
+                                // Session &amp; Context Management
+<span class="fc" id="L162">                                .securityContext(sc -&gt; sc.securityContextRepository(securityContextRepository))</span>
+<span class="fc" id="L163">                                .sessionManagement(</span>
+<span class="fc" id="L164">                                                sm -&gt; sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)</span>
+<span class="fc" id="L165">                                                                .sessionFixation(</span>
+<span class="fc" id="L166">                                                                                fixation -&gt; fixation.changeSessionId())) // Mencegah</span>
+                                // Session
+                                // Fixation
+                                // Attack
+<span class="fc" id="L170">                                .requestCache(</span>
+<span class="fc" id="L171">                                                cache -&gt; cache.disable()) // Penting untuk SPA agar tidak terjadi</span>
+                                                                          // redirect
+                                // aneh saat unauthorized
+
+                                // Disable default UI yang tidak dibutuhkan untuk API
+<span class="fc" id="L176">                                .formLogin(form -&gt; form.disable())</span>
+<span class="fc" id="L177">                                .httpBasic(basic -&gt; basic.disable())</span>
+
+                                // 5. Logout: endpointnya adalah AuthController POST /api/v1/auth/logout
+                                // (authService.logout — audit log + MDC.clear + SecurityContextLogoutHandler).
+                                // LogoutFilter Spring tidak boleh mengintersepsi URL yang sama; jika
+                                // diaktifkan, request tidak pernah sampai ke controller (logout ganda).
+<span class="fc" id="L183">                                .logout(logout -&gt; logout.disable())</span>
+
+                                // CSRF Protection
+<span class="fc" id="L186">                                .csrf(</span>
+<span class="fc" id="L187">                                                csrf -&gt; csrf.csrfTokenRepository(csrfTokenRepository)</span>
+<span class="fc" id="L188">                                                                .csrfTokenRequestHandler(</span>
+                                                                                new SpaCsrfTokenRequestHandler()) // Handler
+                                                                // khusus SPA
+<span class="fc" id="L191">                                                                .ignoringRequestMatchers(</span>
+                                                                                &quot;/api/v1/auth/login&quot;, // Login harus
+                                                                                                      // di-exempt dari
+                                                                                // CSRF
+                                                                                &quot;/api/v1/health&quot;,
+                                                                                &quot;/actuator/**&quot;,
+                                                                                &quot;/v3/api-docs/**&quot;,
+                                                                                &quot;/swagger-ui/**&quot;))
+
+                                // Custom Filters
+<span class="fc" id="L201">                                .addFilterAfter(</span>
                                                 new CsrfCookieFilter(),
                                                 org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class)
-<span class="fc" id="L147">                                .addFilterAfter(</span>
+<span class="fc" id="L204">                                .addFilterAfter(</span>
                                                 new com.fastwork.expense.observability.UserContextMdcFilter(),
                                                 org.springframework.security.web.context.SecurityContextHolderFilter.class)
-<span class="fc" id="L150">                                .headers(</span>
-<span class="fc" id="L151">                                                headers -&gt; headers</span>
-<span class="fc" id="L152">                                                                .contentSecurityPolicy(csp -&gt; csp.policyDirectives(CSP))</span>
-<span class="fc" id="L153">                                                                .frameOptions(frame -&gt; frame.deny())</span>
-<span class="fc" id="L154">                                                                .referrerPolicy(</span>
-<span class="fc" id="L155">                                                                                referrer -&gt; referrer.policy(</span>
+
+                                // Security Headers (Defense in Depth)
+<span class="fc" id="L209">                                .headers(</span>
+<span class="fc" id="L210">                                                headers -&gt; headers</span>
+<span class="fc" id="L211">                                                                .contentSecurityPolicy(</span>
+<span class="fc" id="L212">                                                                                csp -&gt; csp.policyDirectives(finalCsp))</span>
+<span class="fc" id="L213">                                                                .frameOptions(</span>
+<span class="fc" id="L214">                                                                                frame -&gt; frame.deny()) // Mencegah</span>
+                                                                                                       // Clickjacking
+<span class="fc" id="L216">                                                                .referrerPolicy(</span>
+<span class="fc" id="L217">                                                                                referrer -&gt; referrer.policy(</span>
                                                                                                 ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
-<span class="fc" id="L157">                                                                .httpStrictTransportSecurity(</span>
+<span class="fc" id="L219">                                                                .httpStrictTransportSecurity(</span>
                                                                                 hsts -&gt; {
-<span class="fc" id="L159">                                                                                        hsts.includeSubDomains(true)</span>
-<span class="fc" id="L160">                                                                                                        .maxAgeInSeconds(</span>
-                                                                                                                        31536000);
-<span class="fc bfc" id="L162" title="All 2 branches covered.">                                                                                        if (!hstsEnabled) {</span>
-<span class="fc" id="L163">                                                                                                hsts.disable();</span>
+<span class="fc bfc" id="L221" title="All 2 branches covered.">                                                                                        if (!hstsEnabled) {</span>
+<span class="fc" id="L222">                                                                                                hsts.disable();</span>
+                                                                                        } else {
+<span class="fc" id="L224">                                                                                                hsts.includeSubDomains(</span>
+                                                                                                                true)
+<span class="fc" id="L226">                                                                                                                .maxAgeInSeconds(</span>
+                                                                                                                                31536000); // 1
+                                                                                                                                           // tahun
                                                                                         }
-<span class="fc" id="L165">                                                                                }))</span>
-<span class="fc" id="L166">                                .authorizeHttpRequests(</span>
-<span class="fc" id="L167">                                                auth -&gt; auth.requestMatchers(</span>
+<span class="fc" id="L230">                                                                                }))</span>
+
+                                // Authorization Rules
+<span class="fc" id="L233">                                .authorizeHttpRequests(</span>
+<span class="fc" id="L234">                                                auth -&gt; auth.requestMatchers(</span>
                                                                 &quot;/api/v1/health&quot;,
                                                                 &quot;/api/v1/auth/login&quot;,
                                                                 &quot;/api/v1/auth/reset-password&quot;,
@@ -174,52 +241,99 @@ import com.fastwork.expense.user.PetUserDetailsService;
                                                                 &quot;/v3/api-docs/**&quot;,
                                                                 &quot;/swagger-ui.html&quot;,
                                                                 &quot;/swagger-ui/**&quot;)
-<span class="fc" id="L177">                                                                .permitAll()</span>
-<span class="fc" id="L178">                                                                .anyRequest()</span>
-<span class="fc" id="L179">                                                                .authenticated())</span>
-<span class="fc" id="L180">                                .exceptionHandling(</span>
-<span class="fc" id="L181">                                                errors -&gt; errors.authenticationEntryPoint(</span>
-<span class="fc" id="L182">                                                                (request, response, ex) -&gt; writeError(</span>
+<span class="fc" id="L244">                                                                .permitAll()</span>
+<span class="fc" id="L245">                                                                .anyRequest()</span>
+<span class="fc" id="L246">                                                                .authenticated())</span>
+
+                                // Custom Exception Handling (JSON Response)
+<span class="fc" id="L249">                                .exceptionHandling(</span>
+<span class="fc" id="L250">                                                errors -&gt; errors.authenticationEntryPoint(</span>
+<span class="fc" id="L251">                                                                (request, response, ex) -&gt; writeError(</span>
                                                                                 response,
                                                                                 objectMapper,
                                                                                 HttpStatus.UNAUTHORIZED,
                                                                                 &quot;UNAUTHORIZED&quot;))
-<span class="fc" id="L187">                                                                .accessDeniedHandler(</span>
-<span class="fc" id="L188">                                                                                (request, response, ex) -&gt; writeError(</span>
+<span class="fc" id="L256">                                                                .accessDeniedHandler(</span>
+<span class="fc" id="L257">                                                                                (request, response, ex) -&gt; writeError(</span>
                                                                                                 response,
                                                                                                 objectMapper,
                                                                                                 HttpStatus.FORBIDDEN,
                                                                                                 &quot;FORBIDDEN&quot;)));
 
-<span class="fc" id="L194">                return http.build();</span>
+<span class="fc" id="L263">                return http.build();</span>
         }
 
+        /**
+         * Merakit arahan CSP: connect-src hanya diperluas bila backend-url diisi
+         * (dafault kosong → tetap origin-satu lewat proxy nginx/Caddy).
+         */
+        static String cspDirectives(String backendUrl) {
+<span class="fc bfc" id="L271" title="All 2 branches covered.">                return StringUtils.hasText(backendUrl)</span>
+<span class="fc" id="L272">                                ? CSP + &quot; connect-src 'self' &quot; + backendUrl + &quot;;&quot;</span>
+<span class="fc" id="L273">                                : CSP + &quot; connect-src 'self';&quot;;</span>
+        }
+
+        /**
+         * Helper method untuk menulis response error dalam format JSON yang konsisten
+         */
         private static void writeError(
                         HttpServletResponse response, ObjectMapper objectMapper, HttpStatus status, String code)
                         throws IOException {
-<span class="fc" id="L200">                response.setStatus(status.value());</span>
-<span class="fc" id="L201">                response.setContentType(MediaType.APPLICATION_JSON_VALUE);</span>
-<span class="fc" id="L202">                response.setCharacterEncoding(&quot;UTF-8&quot;);</span>
-<span class="fc" id="L203">                objectMapper.writeValue(</span>
-<span class="fc" id="L204">                                response.getOutputStream(),</span>
-<span class="fc" id="L205">                                ApiError.of(</span>
+<span class="fc" id="L282">                response.setStatus(status.value());</span>
+<span class="fc" id="L283">                response.setContentType(MediaType.APPLICATION_JSON_VALUE);</span>
+<span class="fc" id="L284">                response.setCharacterEncoding(&quot;UTF-8&quot;);</span>
+<span class="fc" id="L285">                objectMapper.writeValue(</span>
+<span class="fc" id="L286">                                response.getOutputStream(),</span>
+<span class="fc" id="L287">                                ApiError.of(</span>
                                                 code,
-<span class="fc bfc" id="L207" title="All 2 branches covered.">                                                HttpStatus.UNAUTHORIZED.equals(status)</span>
-<span class="fc" id="L208">                                                                ? &quot;Tidak terautentikasi&quot;</span>
-<span class="fc" id="L209">                                                                : &quot;Akses ditolak&quot;));</span>
-<span class="fc" id="L210">        }</span>
+<span class="fc bfc" id="L289" title="All 2 branches covered.">                                                HttpStatus.UNAUTHORIZED.equals(status)</span>
+<span class="fc" id="L290">                                                                ? &quot;Tidak terautentikasi&quot;</span>
+<span class="fc" id="L291">                                                                : &quot;Akses ditolak&quot;));</span>
+<span class="fc" id="L292">        }</span>
 
+        /**
+         * Filter khusus untuk memastikan cookie CSRF dibuat saat pertama kali halaman
+         * dimuat atau saat
+         * session baru dimulai, sehingga frontend (SPA) bisa membacanya.
+         */
         private static final class CsrfCookieFilter extends OncePerRequestFilter {
                 @Override
                 protected void doFilterInternal(
                                 HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                                 throws ServletException, IOException {
-<span class="fc" id="L217">                        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());</span>
-<span class="fc bfc" id="L218" title="All 2 branches covered.">                        if (csrfToken != null) {</span>
-<span class="fc" id="L219">                                csrfToken.getToken();</span>
+<span class="fc" id="L304">                        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());</span>
+<span class="fc bfc" id="L305" title="All 2 branches covered.">                        if (csrfToken != null) {</span>
+                                // Memanggil getToken() memaksa Spring Security untuk generate cookie jika belum
+                                // ada
+<span class="fc" id="L308">                                csrfToken.getToken();</span>
                         }
-<span class="fc" id="L221">                        filterChain.doFilter(request, response);</span>
-<span class="fc" id="L222">                }</span>
+<span class="fc" id="L310">                        filterChain.doFilter(request, response);</span>
+<span class="fc" id="L311">                }</span>
+        }
+
+        /**
+         * Handler CSRF khusus untuk Single Page Application (SPA). Membaca token CSRF
+         * dari Header
+         * (X-XSRF-TOKEN) yang dikirim oleh frontend, bukan dari form parameter
+         * tradisional.
+         */
+<span class="fc" id="L320">        public static final class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeHandler {</span>
+<span class="fc" id="L321">                private final CsrfTokenRequestHandler delegate = new CsrfTokenRequestAttributeHandler();</span>
+
+                public void handle(
+                                HttpServletRequest request, HttpServletResponse response,
+                                Supplier&lt;CsrfToken&gt; csrfToken) {
+<span class="fc" id="L326">                        this.delegate.handle(request, response, csrfToken);</span>
+<span class="fc" id="L327">                }</span>
+
+                @Override
+                public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
+                        // Prioritaskan pembacaan dari Header (standar SPA seperti Axios/Fetch)
+<span class="fc" id="L332">                        String headerValue = request.getHeader(csrfToken.getHeaderName());</span>
+<span class="fc bfc" id="L333" title="All 2 branches covered.">                        return (StringUtils.hasText(headerValue))</span>
+<span class="fc" id="L334">                                        ? headerValue</span>
+<span class="fc" id="L335">                                        : this.delegate.resolveCsrfTokenValue(request, csrfToken);</span>
+                }
         }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

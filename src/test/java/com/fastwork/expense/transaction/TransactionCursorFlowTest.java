@@ -95,7 +95,9 @@ class TransactionCursorFlowTest extends PostgresIntegrationTest {
 
     private JsonNode page(String sort, String cursor, int limit) throws Exception {
         MockHttpServletRequestBuilder builder =
-                get("/api/v1/transactions").param("sort", sort).param("limit", String.valueOf(limit));
+                get("/api/v1/transactions")
+                        .param("sort", sort)
+                        .param("limit", String.valueOf(limit));
         if (cursor != null) {
             builder = builder.param("cursor", cursor);
         }
@@ -157,8 +159,7 @@ class TransactionCursorFlowTest extends PostgresIntegrationTest {
     @Test
     void malformedCursorShapesAreRejected() throws Exception {
         expectBadCursor(
-                "DATE_DESC",
-                encode("2026-10-01|2026-10-01T00:00:00Z|" + UUID.randomUUID() + "|x"));
+                "DATE_DESC", encode("2026-10-01|2026-10-01T00:00:00Z|" + UUID.randomUUID() + "|x"));
         expectBadCursor("AMOUNT_DESC", encode("1000|" + UUID.randomUUID() + "|x"));
         expectBadCursor("CATEGORY_ASC", encode("Makanan"));
         expectBadCursor("AMOUNT_DESC", encode("bukan-angka|" + UUID.randomUUID()));

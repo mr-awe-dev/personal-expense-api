@@ -74,16 +74,12 @@ class ClosingEdgeFlowTest extends WebFlowTestBase {
         tx("2026-10-03", makanan, 10_000L);
         tx("2026-10-09", makanan, 12_000L);
 
-        mockMvc.perform(
-                        get("/api/v1/closings/preview")
-                                .cookie(session)
-                                .param("from", "2026-10-03"))
+        mockMvc.perform(get("/api/v1/closings/preview").cookie(session).param("from", "2026-10-03"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.to").value("2026-10-09"))
                 .andExpect(jsonPath("$.txCount").value(2));
 
-        mockMvc.perform(
-                        get("/api/v1/closings/preview").cookie(session).param("to", "2026-10-09"))
+        mockMvc.perform(get("/api/v1/closings/preview").cookie(session).param("to", "2026-10-09"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.from").value("2026-10-03"));
     }
@@ -118,8 +114,7 @@ class ClosingEdgeFlowTest extends WebFlowTestBase {
         String id = objectMapper.readTree(body).get("id").asText();
 
         byte[] xlsx =
-                mockMvc.perform(
-                                get("/api/v1/closings/" + id + "/export.xlsx").cookie(session))
+                mockMvc.perform(get("/api/v1/closings/" + id + "/export.xlsx").cookie(session))
                         .andExpect(status().isOk())
                         .andReturn()
                         .getResponse()
@@ -135,7 +130,9 @@ class ClosingEdgeFlowTest extends WebFlowTestBase {
             for (org.apache.poi.ss.usermodel.Row row : sheet) {
                 org.apache.poi.ss.usermodel.Cell name = row.getCell(2);
                 org.apache.poi.ss.usermodel.Cell label = row.getCell(3);
-                if (name == null || label == null || !"Subtotal".equals(label.getStringCellValue())) {
+                if (name == null
+                        || label == null
+                        || !"Subtotal".equals(label.getStringCellValue())) {
                     continue;
                 }
                 if ("Makanan".equals(name.getStringCellValue())) {
@@ -160,15 +157,15 @@ class ClosingEdgeFlowTest extends WebFlowTestBase {
         String body = close("2026-10-01", "2026-10-31");
         String id = objectMapper.readTree(body).get("id").asText();
 
-        mockMvc.perform(
-                        authorized(
-                                post("/api/v1/closings/" + id + "/reopen"), session))
+        mockMvc.perform(authorized(post("/api/v1/closings/" + id + "/reopen"), session))
                 .andExpect(status().isNoContent());
-        assertThat(jdbcClient
-                        .sql("select count(*) from transactions where closing_id is null and user_id = :u")
-                        .param("u", user.getId())
-                        .query(Long.class)
-                        .single())
+        assertThat(
+                        jdbcClient
+                                .sql(
+                                        "select count(*) from transactions where closing_id is null and user_id = :u")
+                                .param("u", user.getId())
+                                .query(Long.class)
+                                .single())
                 .isEqualTo(1L);
     }
 

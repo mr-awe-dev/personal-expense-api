@@ -2,6 +2,7 @@ package com.fastwork.expense.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.slf4j.MDC;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -52,8 +53,12 @@ public class AuthService {
         String userAgent = httpRequest.getHeader("User-Agent");
 
         // 1. Log percobaan login (Audit awal)
-        log.info(AUTH_MARKER, "Login attempt: email={}, ip={}, userAgent={}",
-                maskEmail(email), ipAddress, userAgent);
+        log.info(
+                AUTH_MARKER,
+                "Login attempt: email={}, ip={}, userAgent={}",
+                maskEmail(email),
+                ipAddress,
+                userAgent);
 
         rateLimiter.assertAttemptAllowed(httpRequest.getRemoteAddr(), email);
 
@@ -64,14 +69,21 @@ public class AuthService {
                             email, request.password()));
         } catch (DisabledException ex) {
             rateLimiter.recordFailure(email);
-            log.warn(LOGIN_FAILURE_MARKER, "Login failed (Account Disabled): email={}, ip={}",
-                    maskEmail(email), ipAddress);
+            log.warn(
+                    LOGIN_FAILURE_MARKER,
+                    "Login failed (Account Disabled): email={}, ip={}",
+                    maskEmail(email),
+                    ipAddress);
             throw ApiException.unauthorized("Akun dinonaktifkan");
         } catch (AuthenticationException ex) {
             rateLimiter.recordFailure(email);
             // Jangan pernah log password! Log hanya alasan error dari Spring Security.
-            log.warn(LOGIN_FAILURE_MARKER, "Login failed (Invalid Credentials): email={}, ip={}, reason={}",
-                    maskEmail(email), ipAddress, ex.getMessage());
+            log.warn(
+                    LOGIN_FAILURE_MARKER,
+                    "Login failed (Invalid Credentials): email={}, ip={}, reason={}",
+                    maskEmail(email),
+                    ipAddress,
+                    ex.getMessage());
             throw ApiException.unauthorized("Email atau password salah");
         }
 
@@ -92,10 +104,16 @@ public class AuthService {
         // request ini otomatis ada userId-nya.
         MDC.put("userId", String.valueOf(user.getId()));
 
-        String sessionId = httpRequest.getSession(false) != null ? httpRequest.getSession(false).getId() : "none";
+        // Sesudah getSession(true) di atas, session dipastikan sudah ada.
+        String sessionId = httpRequest.getSession(false).getId();
 
-        log.info(LOGIN_SUCCESS_MARKER, "Login successful: userId={}, email={}, ip={}, sessionId={}",
-                user.getId(), maskEmail(email), ipAddress, sessionId);
+        log.info(
+                LOGIN_SUCCESS_MARKER,
+                "Login successful: userId={}, email={}, ip={}, sessionId={}",
+                user.getId(),
+                maskEmail(email),
+                ipAddress,
+                sessionId);
 
         return new LoginResponse(MeResponse.from(user));
     }
@@ -104,15 +122,16 @@ public class AuthService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication != null ? authentication.getName() : "unknown";
 
-        log.info(AUTH_MARKER, "Logout executed: email={}, ip={}",
-                maskEmail(email), resolveClientIp(httpRequest));
+        log.info(
+                AUTH_MARKER,
+                "Logout executed: email={}, ip={}",
+                maskEmail(email),
+                resolveClientIp(httpRequest));
 
         new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);
         SecurityContextHolder.clearContext();
         MDC.remove("userId"); // Bersihkan MDC setelah logout
     }
-
-    // --- HELPER METHODS ---
 
     /**
      * Mengambil IP asli klien. Karena aplikasi berjalan di belakang Caddy/Docker,
@@ -132,14 +151,20 @@ public class AuthService {
 
     /**
      * Masking email untuk keamanan PII (Personally Identifiable Information).
-     * Contoh: "admin@fastwork.co" -> "a***@fastwork.co"
+     * Contoh:
+     * "admin@fastwork.co" -> "a***@fastwork.co"
      */
     private String maskEmail(String email) {
-        if (email == null || !email.contains("@"))
+        if (!email.contains("@")) {
             return "***";
+        }
+
         int atIndex = email.indexOf("@");
-        if (atIndex <= 1)
+
+        if (atIndex <= 1) {
             return "***" + email.substring(atIndex);
+        }
+
         return email.charAt(0) + "***" + email.substring(atIndex);
     }
 }

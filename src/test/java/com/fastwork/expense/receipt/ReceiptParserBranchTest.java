@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pelengkap matriks cabang {@link ReceiptParser} untuk menutup jalur heuristik yang tidak
- * tersentuh {@code ReceiptParserTest}: baris IGNORE, carry value-only, parsial satu digit,
- * bukti ambigu, tarif pajak, confusable, dan filter merchant.
+ * Pelengkap matriks cabang {@link ReceiptParser} untuk menutup jalur heuristik yang tidak tersentuh
+ * {@code ReceiptParserTest}: baris IGNORE, carry value-only, parsial satu digit, bukti ambigu,
+ * tarif pajak, confusable, dan filter merchant.
  */
 class ReceiptParserBranchTest {
 
@@ -99,10 +99,7 @@ class ReceiptParserBranchTest {
     @Test
     void negativeExpectedAndOverflowAreIgnored() {
         assertThat(parse("Subtotal : 1.000\nDiskon : 5.000").amount()).isNull();
-        assertThat(
-                        parse("Subtotal : 999.999.999.999\nPPN : 999.999.999.999")
-                                .amount())
-                .isNull();
+        assertThat(parse("Subtotal : 999.999.999.999\nPPN : 999.999.999.999").amount()).isNull();
     }
 
     @Test
@@ -114,8 +111,7 @@ class ReceiptParserBranchTest {
 
     @Test
     void percentOnlyAndPlainSmallNumbersDoNotCarry() {
-        ReceiptParser.Extracted e =
-                parse("KEMBALI 500\nPB1 10%\nDISKON 20\nTUNAI 30");
+        ReceiptParser.Extracted e = parse("KEMBALI 500\nPB1 10%\nDISKON 20\nTUNAI 30");
         assertThat(e.amount()).isNull();
     }
 
@@ -134,8 +130,7 @@ class ReceiptParserBranchTest {
     @Test
     void changeAndTenderedCarryValuesAndKeepMaxTendered() {
         assertThat(parse("KEMBALI\nRp 5.000\nTUNAI\nRp 50.000").amount()).isEqualTo(45000L);
-        ReceiptParser.Extracted descending =
-                parse("TUNAI 90.000\nTUNAI 50.000\nKEMBALI 5.000");
+        ReceiptParser.Extracted descending = parse("TUNAI 90.000\nTUNAI 50.000\nKEMBALI 5.000");
         assertThat(descending.amount()).isEqualTo(85000L); // tendered max = 90.000
     }
 
@@ -308,7 +303,8 @@ class ReceiptParserBranchTest {
 
     @Test
     void agreementOfTwoPaymentsOverridesGrandTotal() {
-        // dua bukti independen (QRIS == tunai−kembalian) ≠ grand total → alternative() mengembalikan 90.000
+        // dua bukti independen (QRIS == tunai−kembalian) ≠ grand total → alternative()
+        // mengembalikan 90.000
         ReceiptParser.Extracted e =
                 parse("Grand Total : 99.900\nQRIS 90.000\nTUNAI 100.000\nKEMBALI 10.000");
         assertThat(e.amount()).isEqualTo(90000L);

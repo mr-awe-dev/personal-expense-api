@@ -180,14 +180,17 @@ class CliCommandRunner implements ApplicationRunner {
                         &quot;  list-users&quot;));
 <span class="fc" id="L181">    }</span>
 
-    /** Tutup konteks lalu akhiri proses; {@link #terminate} adalah seam agar tes tidak mematikan JVM. */
+    /**
+     * Tutup konteks lalu akhiri proses; {@link #terminate} adalah seam agar tes tidak mematikan
+     * JVM.
+     */
     void exit(int code) {
-<span class="fc" id="L185">        SpringApplication.exit(context, () -&gt; code);</span>
-<span class="fc" id="L186">        terminate(code);</span>
-<span class="fc" id="L187">    }</span>
+<span class="fc" id="L188">        SpringApplication.exit(context, () -&gt; code);</span>
+<span class="fc" id="L189">        terminate(code);</span>
+<span class="fc" id="L190">    }</span>
 
     void terminate(int code) {
-<span class="nc" id="L190">        System.exit(code);</span>
-<span class="nc" id="L191">    }</span>
+<span class="nc" id="L193">        System.exit(code);</span>
+<span class="nc" id="L194">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

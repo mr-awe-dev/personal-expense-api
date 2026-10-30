@@ -59,7 +59,10 @@ class ConvertersTest {
         assertThat(ApiError.of("CODE", "pesan").fieldErrors()).isNull();
         assertThat(ApiError.of("CODE", "pesan", java.util.List.of()).fieldErrors()).isNull();
         assertThat(
-                        ApiError.of("CODE", "pesan", java.util.List.of(new ApiError.FieldError("f", "m")))
+                        ApiError.of(
+                                        "CODE",
+                                        "pesan",
+                                        java.util.List.of(new ApiError.FieldError("f", "m")))
                                 .fieldErrors())
                 .singleElement()
                 .satisfies(
@@ -72,14 +75,17 @@ class ConvertersTest {
 
     @Test
     void apiExceptionFactoriesCarryStatusAndCode() {
-        assertThat(ApiException.notFound("a").status()).isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
+        assertThat(ApiException.notFound("a").status())
+                .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
         assertThat(ApiException.conflict("a").code()).isEqualTo("CONFLICT");
         assertThat(ApiException.unauthorized("a").code()).isEqualTo("UNAUTHORIZED");
         assertThat(ApiException.unprocessable("a").status())
                 .isEqualTo(org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY);
         assertThat(ApiException.badRequest("KODE", "a").code()).isEqualTo("KODE");
         assertThat(ApiException.rateLimited(9, "a").retryAfterSeconds()).isEqualTo(9L);
-        assertThat(new ApiException(org.springframework.http.HttpStatus.GONE, "X", "m").retryAfterSeconds())
+        assertThat(
+                        new ApiException(org.springframework.http.HttpStatus.GONE, "X", "m")
+                                .retryAfterSeconds())
                 .isNull();
     }
 }

@@ -107,8 +107,7 @@ class SummaryEdgeFlowTest extends WebFlowTestBase {
                         .getResponse()
                         .getContentAsString();
 
-        com.fasterxml.jackson.databind.JsonNode groups =
-                objectMapper.readTree(body).get("groups");
+        com.fasterxml.jackson.databind.JsonNode groups = objectMapper.readTree(body).get("groups");
         com.fasterxml.jackson.databind.JsonNode transport = null;
         com.fasterxml.jackson.databind.JsonNode makan = null;
         for (com.fasterxml.jackson.databind.JsonNode group : groups) {

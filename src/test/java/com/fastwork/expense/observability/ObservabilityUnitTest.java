@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -12,7 +11,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
 import org.slf4j.MDC;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -38,7 +36,8 @@ class ObservabilityUnitTest {
         MonolithModuleJsonProvider provider = new MonolithModuleJsonProvider();
         JsonGenerator generator = mock(JsonGenerator.class);
         ILoggingEvent event = mock(ILoggingEvent.class);
-        when(event.getLoggerName()).thenReturn("com.fastwork.expense.transaction.TransactionService");
+        when(event.getLoggerName())
+                .thenReturn("com.fastwork.expense.transaction.TransactionService");
 
         provider.writeTo(generator, event);
 

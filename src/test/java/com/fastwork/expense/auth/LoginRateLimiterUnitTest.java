@@ -51,8 +51,10 @@ class LoginRateLimiterUnitTest {
     @Test
     void blankEmailShortCircuitsAfterIpBucket() {
         LoginRateLimiter limiter = limiter(10, 1, 500, 8000);
-        assertThatCode(() -> limiter.assertAttemptAllowed("3.3.3.3", null)).doesNotThrowAnyException();
-        assertThatCode(() -> limiter.assertAttemptAllowed("3.3.3.3", "  ")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.assertAttemptAllowed("3.3.3.3", null))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> limiter.assertAttemptAllowed("3.3.3.3", "  "))
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -76,7 +78,9 @@ class LoginRateLimiterUnitTest {
         assertThatThrownBy(() -> limiter.assertAttemptAllowed("5.5.5.5", "lambat@b.c"))
                 .isInstanceOfSatisfying(
                         ApiException.class,
-                        ex -> assertThat(ex.getMessage()).isEqualTo("Tunggu beberapa detik sebelum mencoba lagi."));
+                        ex ->
+                                assertThat(ex.getMessage())
+                                        .isEqualTo("Tunggu beberapa detik sebelum mencoba lagi."));
 
         limiter.recordSuccess("lambat@b.c");
         assertThatCode(() -> limiter.assertAttemptAllowed("5.5.5.5", "lambat@b.c"))
@@ -123,8 +127,7 @@ class LoginRateLimiterUnitTest {
         assertThatThrownBy(
                         () ->
                                 limiter.assertAttemptAllowed(
-                                        "8.8.8.8",
-                                        "campur@contoh.com".toUpperCase(Locale.ROOT)))
+                                        "8.8.8.8", "campur@contoh.com".toUpperCase(Locale.ROOT)))
                 .isInstanceOf(ApiException.class);
     }
 }

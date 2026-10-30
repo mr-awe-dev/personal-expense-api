@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.UUID;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +24,6 @@ import com.fastwork.expense.user.PetPrincipal;
 import com.fastwork.expense.user.User;
 import com.fastwork.expense.user.UserRole;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 /** Unit test controller export/import + validasi versi service — jalur error tanpa DB. */
 class ExportImportUnitTest {
 
@@ -35,14 +35,13 @@ class ExportImportUnitTest {
 
     private ExportController controller(ObjectMapper mapper) {
         when(currentUser.principal())
-                .thenReturn(
-                        new PetPrincipal(
-                                new User(userId, "a@b.c", "hash", UserRole.OWNER)));
+                .thenReturn(new PetPrincipal(new User(userId, "a@b.c", "hash", UserRole.OWNER)));
         return new ExportController(currentUser, exportService, importService, mapper);
     }
 
     private BackupFile sampleFile() {
-        return new BackupFile(1, Instant.parse("2026-10-24T00:00:00Z"), null, null, null, null, null);
+        return new BackupFile(
+                1, Instant.parse("2026-10-24T00:00:00Z"), null, null, null, null, null);
     }
 
     @Test
@@ -73,10 +72,7 @@ class ExportImportUnitTest {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getContentLengthLong()).thenReturn(10L * 1024 * 1024 + 1);
 
-        assertThatThrownBy(
-                        () ->
-                                controller(objectMapper)
-                                        .importData(request, "{\"version\":1}"))
+        assertThatThrownBy(() -> controller(objectMapper).importData(request, "{\"version\":1}"))
                 .isInstanceOfSatisfying(
                         ApiException.class,
                         ex -> {
@@ -93,7 +89,8 @@ class ExportImportUnitTest {
 
         assertThatThrownBy(() -> controller(objectMapper).importData(request, hugeBody))
                 .isInstanceOfSatisfying(
-                        ApiException.class, ex -> assertThat(ex.code()).isEqualTo("PAYLOAD_TOO_LARGE"));
+                        ApiException.class,
+                        ex -> assertThat(ex.code()).isEqualTo("PAYLOAD_TOO_LARGE"));
     }
 
     @Test
@@ -103,7 +100,8 @@ class ExportImportUnitTest {
 
         assertThatThrownBy(() -> controller(objectMapper).importData(request, "{\""))
                 .isInstanceOfSatisfying(
-                        ApiException.class, ex -> assertThat(ex.code()).isEqualTo("MALFORMED_REQUEST"));
+                        ApiException.class,
+                        ex -> assertThat(ex.code()).isEqualTo("MALFORMED_REQUEST"));
     }
 
     @Test
@@ -113,8 +111,7 @@ class ExportImportUnitTest {
         when(importService.importFile(eq(userId), any(BackupFile.class)))
                 .thenReturn(new ImportResult(1, 2, 3, 4));
 
-        ImportResult result =
-                controller(objectMapper).importData(request, "{\"version\": 1}");
+        ImportResult result = controller(objectMapper).importData(request, "{\"version\": 1}");
 
         assertThat(result.categories()).isEqualTo(1);
         assertThat(result.transactions()).isEqualTo(2);
@@ -127,8 +124,7 @@ class ExportImportUnitTest {
         when(importService.importFile(eq(userId), any(BackupFile.class)))
                 .thenReturn(new ImportResult(0, 0, 0, 0));
 
-        assertThat(controller(objectMapper).importData(request, "{\"version\": 1}"))
-                .isNotNull();
+        assertThat(controller(objectMapper).importData(request, "{\"version\": 1}")).isNotNull();
     }
 
     @Test
@@ -143,11 +139,11 @@ class ExportImportUnitTest {
                             assertThat(ex.getMessage()).contains("(versi ?)");
                         });
 
-        BackupFile v2 =
-                new BackupFile(2, Instant.now(), null, null, null, null, null);
+        BackupFile v2 = new BackupFile(2, Instant.now(), null, null, null, null, null);
         assertThatThrownBy(() -> service.importFile(userId, v2))
                 .isInstanceOfSatisfying(
-                        ApiException.class, ex -> assertThat(ex.getMessage()).contains("(versi 2)"));
+                        ApiException.class,
+                        ex -> assertThat(ex.getMessage()).contains("(versi 2)"));
     }
 
     @Test

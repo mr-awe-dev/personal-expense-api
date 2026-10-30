@@ -1,11 +1,12 @@
 package com.fastwork.expense.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -84,7 +85,13 @@ class CliCommandRunnerTest {
         User created = new User(UUID.randomUUID(), "a@b.c", "hash", UserRole.OWNER);
         when(userRepository.findByEmail("a@b.c")).thenReturn(Optional.of(created));
 
-        run("app.jar", "--spring.profiles.active=cli", "reset-password", "a@b.c", "--password", PASSWORD);
+        run(
+                "app.jar",
+                "--spring.profiles.active=cli",
+                "reset-password",
+                "a@b.c",
+                "--password",
+                PASSWORD);
 
         verify(userService).setPassword(created, PASSWORD);
         assertThat(exits).containsExactly(0);
@@ -215,7 +222,8 @@ class CliCommandRunnerTest {
                 .thenReturn(
                         List.of(
                                 new User(UUID.randomUUID(), "satu@contoh.com", "h", UserRole.OWNER),
-                                new User(UUID.randomUUID(), "dua@contoh.com", "h", UserRole.OWNER)));
+                                new User(
+                                        UUID.randomUUID(), "dua@contoh.com", "h", UserRole.OWNER)));
         run("list-users");
         assertThat(exits).containsExactly(0);
     }
@@ -229,7 +237,8 @@ class CliCommandRunnerTest {
 
     @Test
     void realSeamMethodsDelegateToJvmEnvironment() {
-        // instance TANPA override: body asli seam harus berjalan (System.getenv / System.console)
+        // instance TANPA override: body asli seam harus berjalan (System.getenv /
+        // System.console)
         CliCommandRunner real =
                 new CliCommandRunner(userService, userRepository, passwordResetService, context);
         // PET_INITIAL_PASSWORD tidak ter-set di lingkungan tes → null
@@ -238,5 +247,147 @@ class CliCommandRunnerTest {
         assertThat(real.readConsolePassword("prompt")).isNull();
         // CATATAN: terminate() sengaja TIDAK dipanggil — body-nya System.exit dan akan
         // mematikan JVM surefire; ia hanya diuji lewat override subclass.
+    }
+
+    // =========================================================
+    // COMMAND ARGUMENT PARSING
+    // =========================================================
+
+    @Test
+    void jarWithoutCommandExitsWithFailure() {
+        run("app.jar");
+
+        assertThat(exits).containsExactly(1);
+        verifyNoInteractions(userService, userRepository, passwordResetService);
+    }
+
+    @Test
+    void jarArgumentsWithoutPropertyFlagsAreParsed() {
+        User created = new User(UUID.randomUUID(), "jar@example.com", "hash", UserRole.OWNER);
+
+        when(userService.createUser("jar@example.com", PASSWORD)).thenReturn(created);
+
+        run("app.jar", "create-user", "jar@example.com", "--password", PASSWORD);
+
+        verify(userService).createUser("jar@example.com", PASSWORD);
+        assertThat(exits).containsExactly(0);
+    }
+
+    // =========================================================
+    // CREATE USER
+    // =========================================================
+
+    @Test
+    void createUserUsesConsolePasswordWhenEnvironmentIsNull() {
+        envPassword = null;
+        consolePassword = "console-password-123".toCharArray();
+
+        User created = new User(UUID.randomUUID(), "console@example.com", "hash", UserRole.OWNER);
+
+        when(userService.createUser("console@example.com", "console-password-123"))
+                .thenReturn(created);
+
+        run("create-user", "console@example.com");
+
+        verify(userService).createUser("console@example.com", "console-password-123");
+
+        assertThat(exits).containsExactly(0);
+    }
+
+    @Test
+    void createUserFailsWhenEnvironmentAndConsolePasswordsAreUnavailable() {
+        envPassword = " ";
+        consolePassword = null;
+
+        run("create-user", "console@example.com");
+
+        assertThat(exits).containsExactly(1);
+        verify(userService, org.mockito.Mockito.never()).createUser(anyString(), anyString());
+    }
+
+    // =========================================================
+    // RESET PASSWORD
+    // =========================================================
+
+    @Test
+    void resetPasswordServiceFailureExitsWithFailure() {
+        User existing = new User(UUID.randomUUID(), "user@example.com", "hash", UserRole.OWNER);
+
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(existing));
+
+        doThrow(new IllegalArgumentException("Password tidak valid"))
+                .when(userService)
+                .setPassword(existing, PASSWORD);
+
+        run("reset-password", "user@example.com", "--password", PASSWORD);
+
+        verify(userService).setPassword(existing, PASSWORD);
+        assertThat(exits).containsExactly(1);
+    }
+
+    @Test
+    void resetPasswordNormalizesEmailWithWhitespace() {
+        User existing = new User(UUID.randomUUID(), "user@example.com", "hash", UserRole.OWNER);
+
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(existing));
+
+        run("reset-password", " USER@EXAMPLE.COM ", "--password", PASSWORD);
+
+        verify(userRepository).findByEmail("user@example.com");
+        verify(userService).setPassword(existing, PASSWORD);
+        assertThat(exits).containsExactly(0);
+    }
+
+    // =========================================================
+    // ISSUE RESET CODE
+    // =========================================================
+
+    @Test
+    void issueResetCodeNormalizesEmail() {
+        when(passwordResetService.issue("user@example.com")).thenReturn("ABC123");
+
+        run("issue-reset-code", " USER@EXAMPLE.COM ");
+
+        verify(passwordResetService).issue("user@example.com");
+        assertThat(exits).containsExactly(0);
+    }
+
+    @Test
+    void issueResetCodeServiceFailureExitsWithFailure() {
+        when(passwordResetService.issue("user@example.com"))
+                .thenThrow(new IllegalStateException("Database unavailable"));
+
+        run("issue-reset-code", "user@example.com");
+
+        verify(passwordResetService).issue("user@example.com");
+        assertThat(exits).containsExactly(1);
+    }
+
+    // =========================================================
+    // LIST USERS
+    // =========================================================
+
+    @Test
+    void listUsersRepositoryFailureExitsWithFailure() {
+        when(userRepository.findAll()).thenThrow(new IllegalStateException("Database unavailable"));
+
+        run("list-users");
+
+        verify(userRepository).findAll();
+        assertThat(exits).containsExactly(1);
+    }
+
+    // =========================================================
+    // APPLICATION CONTEXT
+    // =========================================================
+
+    @Test
+    void exitClosesApplicationContextAndDelegatesTermination() {
+        CliCommandRunner testRunner = runner();
+
+        testRunner.exit(7);
+
+        verify(context).close();
+        assertThat(exits).containsExactly(7);
     }
 }

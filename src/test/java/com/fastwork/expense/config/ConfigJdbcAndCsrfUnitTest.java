@@ -10,10 +10,10 @@ import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.Types;
 
-import org.junit.jupiter.api.Test;
-import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.ValueBinder;
+import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.StringJavaType;
+import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -104,5 +104,15 @@ class ConfigJdbcAndCsrfUnitTest {
         MockFilterChain chain = new MockFilterChain();
         doFilter.invoke(filter, new MockHttpServletRequest(), new MockHttpServletResponse(), chain);
         assertThat(chain.getRequest()).isNotNull();
+    }
+
+    @Test
+    void cspDirectivesExpandConnectSrcOnlyWhenBackendUrlIsSet() {
+        // backend-url kosong → satu origin saja (proxy nginx/Caddy menangani /api).
+        assertThat(SecurityConfig.cspDirectives("")).endsWith("connect-src 'self';");
+
+        String withBackend = SecurityConfig.cspDirectives("https://api.example.com");
+        assertThat(withBackend).contains("connect-src 'self' https://api.example.com;");
+        assertThat(withBackend).contains("default-src 'self';");
     }
 }

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.fastwork.expense.ExpenseApplicationTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.314 s -- in com.fastwork.expense.ExpenseApplicationTest

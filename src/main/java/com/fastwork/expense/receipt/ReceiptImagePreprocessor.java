@@ -12,14 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Pra-pemrosesan foto struk sebelum masuk Tesseract (tanpa dependensi baru):
- * resize (maks 1600 px / naikkan bila terlalu kecil) → grayscale → contrast-stretch
- * persentil 2–98. Binerisasi Sauvola DAN mask-latar-gelap sengaja TIDAK dipakai:
- * Sauvola merusak digit tebal ("69.300" → "== 9.900"), sementara mask latar menghancurkan
- * angka di bawah bayangan gelap di atas kertas (kasus BEEPOS: baris Total jadi "-¢").
- * Layanan pemindai memakai strategi best-of (teks asli vs teks pra-pemrosesan) sehingga
- * pra-pemrosesan tidak pernah bisa merugikan.
- * Gagal apa pun (format tak terbaca, I/O) → {@code false}; pemanggil tetap memakai gambar asli.
+ * Pra-pemrosesan foto struk sebelum masuk Tesseract (tanpa dependensi baru): resize (maks 1600 px /
+ * naikkan bila terlalu kecil) → grayscale → contrast-stretch persentil 2–98. Binerisasi Sauvola DAN
+ * mask-latar-gelap sengaja TIDAK dipakai: Sauvola merusak digit tebal ("69.300" → "== 9.900"),
+ * sementara mask latar menghancurkan angka di bawah bayangan gelap di atas kertas (kasus BEEPOS:
+ * baris Total jadi "-¢"). Layanan pemindai memakai strategi best-of (teks asli vs teks
+ * pra-pemrosesan) sehingga pra-pemrosesan tidak pernah bisa merugikan. Gagal apa pun (format tak
+ * terbaca, I/O) → {@code false}; pemanggil tetap memakai gambar asli.
  */
 final class ReceiptImagePreprocessor {
 
@@ -67,7 +66,8 @@ final class ReceiptImagePreprocessor {
         }
         int targetWidth = Math.max(1, (int) Math.round(width * factor));
         int targetHeight = Math.max(1, (int) Math.round(height * factor));
-        BufferedImage scaled = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+        BufferedImage scaled =
+                new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = scaled.createGraphics();
         g.setRenderingHint(
                 RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
@@ -126,5 +126,4 @@ final class ReceiptImagePreprocessor {
         }
         return out;
     }
-
 }

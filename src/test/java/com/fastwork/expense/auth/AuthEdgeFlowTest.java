@@ -78,8 +78,10 @@ class AuthEdgeFlowTest extends PostgresIntegrationTest {
                                 .content(
                                         objectMapper.writeValueAsString(
                                                 Map.of(
-                                                        "email", "pemilik@example.com",
-                                                        "password", PASSWORD))))
+                                                        "email",
+                                                        "pemilik@example.com",
+                                                        "password",
+                                                        PASSWORD))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Email atau password salah"));
     }
@@ -94,8 +96,7 @@ class AuthEdgeFlowTest extends PostgresIntegrationTest {
     @Test
     void meEndpointWorksAgainAfterManualSessionPrune() throws Exception {
         jdbcClient.sql("delete from SPRING_SESSION").update();
-        mockMvc.perform(get("/api/v1/me").cookie(session))
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/me").cookie(session)).andExpect(status().isUnauthorized());
     }
 
     private MockHttpServletRequestBuilder withCsrf(MockHttpServletRequestBuilder builder)
@@ -127,7 +128,11 @@ class AuthEdgeFlowTest extends PostgresIntegrationTest {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(
                                                 objectMapper.writeValueAsString(
-                                                        Map.of("email", email, "password", password))))
+                                                        Map.of(
+                                                                "email",
+                                                                email,
+                                                                "password",
+                                                                password))))
                         .andExpect(status().isOk())
                         .andReturn();
         for (Cookie cookie : result.getResponse().getCookies()) {

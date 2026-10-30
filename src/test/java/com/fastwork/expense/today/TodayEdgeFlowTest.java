@@ -49,8 +49,6 @@ class TodayEdgeFlowTest extends WebFlowTestBase {
 
         mockMvc.perform(get("/api/v1/today").cookie(session))
                 .andExpect(status().isOk())
-                .andExpect(
-                        jsonPath("$.date")
-                                .value(LocalDate.now(ZoneOffset.UTC).toString()));
+                .andExpect(jsonPath("$.date").value(LocalDate.now(ZoneOffset.UTC).toString()));
     }
 }

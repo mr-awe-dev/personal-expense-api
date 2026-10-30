@@ -10,6 +10,7 @@ com\fastwork\expense\contract\OpenApiExportTest.class
 com\fastwork\expense\export\ExportImportFlowTest.class
 com\fastwork\expense\common\GlobalExceptionHandlerTest$Holder.class
 com\fastwork\expense\receipt\ReceiptScanFlowTest.class
+com\fastwork\expense\ExpenseApplicationTest.class
 com\fastwork\expense\observability\UserContextMdcFilterTest.class
 com\fastwork\expense\transaction\TransactionUnitTest.class
 com\fastwork\expense\auth\AuthRateLimitDelayTest.class

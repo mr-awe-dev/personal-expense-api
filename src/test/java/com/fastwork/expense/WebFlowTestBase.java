@@ -51,7 +51,11 @@ public abstract class WebFlowTestBase extends PostgresIntegrationTest {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(
                                                 objectMapper.writeValueAsString(
-                                                        Map.of("email", email, "password", PASSWORD))))
+                                                        Map.of(
+                                                                "email",
+                                                                email,
+                                                                "password",
+                                                                PASSWORD))))
                         .andExpect(
                                 org.springframework.test.web.servlet.result.MockMvcResultMatchers
                                         .status()

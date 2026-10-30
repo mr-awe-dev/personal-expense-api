@@ -9,49 +9,42 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parse heuristik teks OCR struk menjadi nominal, tanggal, dan nama merchant.
- * Murni (tanpa I/O)
- * agar mudah di-unit-test. Format angka mengikuti struk Indonesia (titik =
- * ribuan, koma = desimal)
+ * Parse heuristik teks OCR struk menjadi nominal, tanggal, dan nama merchant. Murni (tanpa I/O)
+ * agar mudah di-unit-test. Format angka mengikuti struk Indonesia (titik = ribuan, koma = desimal)
  * dengan toleransi format Inggris.
  *
- * &lt;p&gt;
- * Pemilihan nominal: tiap baris diklasifikasi (grand total, total, subtotal,
- * diskon, pajak,
- * pembayaran, tunai, kembalian). Nominal dipilih dari baris total, lalu
- * divalidasi silang dengan
- * bukti lain (subtotal + pajak - diskon, nominal QRIS/debit, tunai -
- * kembalian).
+ * &lt;p&gt;Pemilihan nominal: tiap baris diklasifikasi (grand total, total, subtotal, diskon, pajak,
+ * pembayaran, tunai, kembalian). Nominal dipilih dari baris total, lalu divalidasi silang dengan
+ * bukti lain (subtotal + pajak - diskon, nominal QRIS/debit, tunai - kembalian).
  */
 final class ReceiptParser {
 
-<span class="fc" id="L28">    record Extracted(Long amount, LocalDate date, String merchant, int confidence) {</span>
-    }
+<span class="fc" id="L22">    record Extracted(Long amount, LocalDate date, String merchant, int confidence) {}</span>
 
     static final long MAX_AMOUNT = 999_999_999_999L;
 
-<span class="fc" id="L33">    private enum Kind {</span>
-<span class="fc" id="L34">        NONE(true),</span>
-<span class="fc" id="L35">        IGNORE(true),</span>
-<span class="fc" id="L36">        CHANGE(true),</span>
-<span class="fc" id="L37">        SUBTOTAL(false),</span>
-<span class="fc" id="L38">        GRAND(false),</span>
-<span class="fc" id="L39">        DISCOUNT(true),</span>
-<span class="fc" id="L40">        FEE(true),</span>
-<span class="fc" id="L41">        PAYMENT(true),</span>
-<span class="fc" id="L42">        TENDERED(true),</span>
-<span class="fc" id="L43">        STRICT(false),</span>
-<span class="fc" id="L44">        WEAK(false);</span>
+<span class="fc" id="L26">    private enum Kind {</span>
+<span class="fc" id="L27">        NONE(true),</span>
+<span class="fc" id="L28">        IGNORE(true),</span>
+<span class="fc" id="L29">        CHANGE(true),</span>
+<span class="fc" id="L30">        SUBTOTAL(false),</span>
+<span class="fc" id="L31">        GRAND(false),</span>
+<span class="fc" id="L32">        DISCOUNT(true),</span>
+<span class="fc" id="L33">        FEE(true),</span>
+<span class="fc" id="L34">        PAYMENT(true),</span>
+<span class="fc" id="L35">        TENDERED(true),</span>
+<span class="fc" id="L36">        STRICT(false),</span>
+<span class="fc" id="L37">        WEAK(false);</span>
 
         /** true = hanya angka berformat ribuan / berawalan Rp yang dianggap nominal. */
         final boolean strongOnly;
 
-<span class="fc" id="L49">        Kind(boolean strongOnly) {</span>
-<span class="fc" id="L50">            this.strongOnly = strongOnly;</span>
-<span class="fc" id="L51">        }</span>
+<span class="fc" id="L42">        Kind(boolean strongOnly) {</span>
+<span class="fc" id="L43">            this.strongOnly = strongOnly;</span>
+<span class="fc" id="L44">        }</span>
     }
 
-<span class="fc" id="L54">    private static final class Acc {</span>
+<span class="fc" id="L47">    private static final class Acc {</span>
         Long grand;
         Long weak;
         Long subtotal;
@@ -59,31 +52,29 @@ final class ReceiptParser {
         Long tendered;
         Long change;
         Long fallback;
-        /**
-         * Rentang nominal total yang digitnya terpotong OCR (&quot;191,47&quot; -&gt;
-         * 191470..191479).
-         */
+
+        /** Rentang nominal total yang digitnya terpotong OCR (&quot;191,47&quot; -&gt; 191470..191479). */
         Long partialLo;
+
         Long partialHi;
         long fee;
         long disc;
-<span class="fc" id="L70">        final List&lt;Long&gt; strict = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L62">        final List&lt;Long&gt; strict = new ArrayList&lt;&gt;();</span>
 
         void add(Kind kind, long v) {
-<span class="fc bfc" id="L73" title="All 10 branches covered.">            switch (kind) {</span>
-<span class="fc" id="L74">                case GRAND -&gt; grand = v;</span>
-<span class="fc" id="L75">                case STRICT -&gt; strict.add(v);</span>
-<span class="fc" id="L76">                case WEAK -&gt; weak = v;</span>
-<span class="fc" id="L77">                case SUBTOTAL -&gt; subtotal = v;</span>
-<span class="fc" id="L78">                case FEE -&gt; fee += v;</span>
-<span class="fc" id="L79">                case DISCOUNT -&gt; disc += v;</span>
-<span class="fc" id="L80">                case PAYMENT -&gt; payment = v;</span>
-<span class="fc bfc" id="L81" title="All 2 branches covered.">                case TENDERED -&gt; tendered = tendered == null ? v : Math.max(tendered, v);</span>
-<span class="fc" id="L82">                case CHANGE -&gt; change = v;</span>
-                default -&gt; {
-                }
+<span class="fc bfc" id="L65" title="All 10 branches covered.">            switch (kind) {</span>
+<span class="fc" id="L66">                case GRAND -&gt; grand = v;</span>
+<span class="fc" id="L67">                case STRICT -&gt; strict.add(v);</span>
+<span class="fc" id="L68">                case WEAK -&gt; weak = v;</span>
+<span class="fc" id="L69">                case SUBTOTAL -&gt; subtotal = v;</span>
+<span class="fc" id="L70">                case FEE -&gt; fee += v;</span>
+<span class="fc" id="L71">                case DISCOUNT -&gt; disc += v;</span>
+<span class="fc" id="L72">                case PAYMENT -&gt; payment = v;</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">                case TENDERED -&gt; tendered = tendered == null ? v : Math.max(tendered, v);</span>
+<span class="fc" id="L74">                case CHANGE -&gt; change = v;</span>
+                default -&gt; {}
             }
-<span class="fc" id="L86">        }</span>
+<span class="fc" id="L77">        }</span>
     }
 
     private static final int CI = Pattern.CASE_INSENSITIVE;
@@ -91,193 +82,214 @@ final class ReceiptParser {
     /** &quot;total&quot; toleran salah baca OCR: T0TAL, TOTAI, TOTA1, TOTA|. */
     private static final String TOTAL = &quot;t[o0]t[a4][l1i|!]&quot;;
 
-<span class="fc" id="L94">    private static final Pattern TOTAL_WORD = Pattern.compile(&quot;(?&lt;![a-z])&quot; + TOTAL + &quot;(?![a-z])&quot;, CI);</span>
-<span class="fc" id="L95">    private static final Pattern SUBTOTAL = Pattern.compile(&quot;(?&lt;![a-z])sub\\s*[-.]?\\s*&quot; + TOTAL, CI);</span>
-<span class="fc" id="L96">    private static final Pattern GRAND = Pattern.compile(</span>
-            &quot;grand\\s*&quot;
-                    + TOTAL
-                    + &quot;|(?&lt;![a-z])&quot;
-                    + TOTAL
-                    + &quot;\\s*(bayar|pembayaran|tagihan|akhir|harus|amount|due)(?![a-z])&quot;
-                    + &quot;|(harus|jumlah)\\s*(di)?bayar|amount\\s*due&quot;,
-            CI);
-<span class="fc" id="L104">    private static final Pattern WEAK_WORD = Pattern.compile(&quot;(?&lt;![a-z])(jumlah|net{1,2}o?|amount)(?![a-z])&quot;, CI);</span>
-    /**
-     * Kata yang membuat baris &quot;total&quot; tetap sah walau memuat ppn/diskon: &quot;Total
-     * (Incl. PPN)&quot;.
-     */
-<span class="fc" id="L109">    private static final Pattern QUALIFIED = Pattern.compile(</span>
-            &quot;(?&lt;![a-z])(incl\\w*|inc|termasuk|setelah|sesudah|after|dgn|dengan)(?![a-z])&quot;,
-            CI);
-<span class="fc" id="L112">    private static final Pattern CHANGE = Pattern.compile(&quot;(?&lt;![a-z])(k[eo][mn]?bali\\w*|change)(?![a-z])&quot;, CI);</span>
-<span class="fc" id="L113">    private static final Pattern IGNORE = Pattern.compile(&quot;(?&lt;![a-z])(saldo|balance|serah|voucher|poin)|hemat&quot;, CI);</span>
-<span class="fc" id="L114">    private static final Pattern DISCOUNT = Pattern.compile(&quot;(?&lt;![a-z])(diskon|discount|disc(?![a-z])|promo|potongan)&quot;,</span>
-            CI);
-<span class="fc" id="L116">    private static final Pattern FEE = Pattern.compile(</span>
-            &quot;(?&lt;![a-z])(pb1|pbl?i|pb2|ppn|pajak|service|servis|charge(?![a-z])|tax(?![a-z])|vat(?![a-z])|administrasi)&quot;,
-            CI);
-<span class="fc" id="L119">    private static final Pattern PAYMENT = Pattern.compile(</span>
-            &quot;(?&lt;![a-z])(qris|[aou]ris|debit|credit|ovo|gopay|go-?pay|shopee?pay|dana|linkaja|e-?money|transfer)(?![a-z])&quot;,
-            CI);
-<span class="fc" id="L122">    private static final Pattern TENDERED = Pattern.compile(</span>
-            &quot;(?&lt;![a-z])(tunai|tuna[l1!|]|tuna(?=[\\s:;=.,]*(?:rp)?[\\s\\d.,]+$)&quot;
-                    + &quot;|cash|uang|bayar|dibayar|paid|payment|pembayaran)(?![a-z])&quot;,
-            CI);
-    /**
-     * Nominal total yang digit terakhirnya hilang/terbaca simbol: &quot;191,47&quot;,
-     * &quot;191,4/5&quot;.
-     */
-<span class="fc" id="L130">    private static final Pattern PARTIAL = Pattern.compile(&quot;(?&lt;![\\dA-Za-z])(\\d{1,3})[.,](\\d{1,2})(?![\\dA-Za-z%])&quot;);</span>
-<span class="fc" id="L131">    private static final Pattern PAREN_TAX = Pattern.compile(&quot;\\([^)]*(ppn|pajak|tax|vat|pb1|pb2|service)[^)]*\\)&quot;, CI);</span>
-<span class="fc" id="L132">    private static final Pattern SECTION_KEYWORD = Pattern.compile(</span>
-            &quot;(rincian|detail|keterangan|item|qty|telp|tlp|^hp|^no\\.?\\s*struk|fax|wc:|tunai\\b.*\\()&quot;,
-            CI);
-<span class="fc" id="L135">    private static final Pattern MERCHANT_SKIP = Pattern.compile(</span>
-            &quot;(?&lt;![a-z])(total|jumlah|net{1,2}o?|amount|kembali|change|diskon|discount|promo|ppn|vat|tax|saldo|balance|serah)&quot;,
-            CI);
-<span class="fc" id="L138">    private static final Pattern CURRENCY_MARK = Pattern.compile(&quot;(?&lt;![a-z])(rp|idr|rub)(?![a-z])&quot;, CI);</span>
-<span class="fc" id="L139">    private static final Pattern TOKEN = Pattern.compile(</span>
-            &quot;(?&lt;![\\dA-Za-z])(\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)(?![\\dA-Za-z%])&quot;);
-<span class="fc" id="L141">    private static final Pattern THOUSANDS = Pattern.compile(&quot;\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{1,2})?&quot;);</span>
+<span class="fc" id="L85">    private static final Pattern TOTAL_WORD =</span>
+<span class="fc" id="L86">            Pattern.compile(&quot;(?&lt;![a-z])&quot; + TOTAL + &quot;(?![a-z])&quot;, CI);</span>
+<span class="fc" id="L87">    private static final Pattern SUBTOTAL =</span>
+<span class="fc" id="L88">            Pattern.compile(&quot;(?&lt;![a-z])sub\\s*[-.]?\\s*&quot; + TOTAL, CI);</span>
+<span class="fc" id="L89">    private static final Pattern GRAND =</span>
+<span class="fc" id="L90">            Pattern.compile(</span>
+                    &quot;grand\\s*&quot;
+                            + TOTAL
+                            + &quot;|(?&lt;![a-z])&quot;
+                            + TOTAL
+                            + &quot;\\s*(bayar|pembayaran|tagihan|akhir|harus|amount|due)(?![a-z])&quot;
+                            + &quot;|(harus|jumlah)\\s*(di)?bayar|amount\\s*due&quot;,
+                    CI);
+<span class="fc" id="L98">    private static final Pattern WEAK_WORD =</span>
+<span class="fc" id="L99">            Pattern.compile(&quot;(?&lt;![a-z])(jumlah|net{1,2}o?|amount)(?![a-z])&quot;, CI);</span>
+
+    /** Kata yang membuat baris &quot;total&quot; tetap sah walau memuat ppn/diskon: &quot;Total (Incl. PPN)&quot;. */
+<span class="fc" id="L102">    private static final Pattern QUALIFIED =</span>
+<span class="fc" id="L103">            Pattern.compile(</span>
+                    &quot;(?&lt;![a-z])(incl\\w*|inc|termasuk|setelah|sesudah|after|dgn|dengan)(?![a-z])&quot;,
+                    CI);
+
+<span class="fc" id="L107">    private static final Pattern CHANGE =</span>
+<span class="fc" id="L108">            Pattern.compile(&quot;(?&lt;![a-z])(k[eo][mn]?bali\\w*|change)(?![a-z])&quot;, CI);</span>
+<span class="fc" id="L109">    private static final Pattern IGNORE =</span>
+<span class="fc" id="L110">            Pattern.compile(&quot;(?&lt;![a-z])(saldo|balance|serah|voucher|poin)|hemat&quot;, CI);</span>
+<span class="fc" id="L111">    private static final Pattern DISCOUNT =</span>
+<span class="fc" id="L112">            Pattern.compile(&quot;(?&lt;![a-z])(diskon|discount|disc(?![a-z])|promo|potongan)&quot;, CI);</span>
+<span class="fc" id="L113">    private static final Pattern FEE =</span>
+<span class="fc" id="L114">            Pattern.compile(</span>
+                    &quot;(?&lt;![a-z])(pb1|pbl?i|pb2|ppn|pajak|service|servis|charge(?![a-z])|tax(?![a-z])|vat(?![a-z])|administrasi)&quot;,
+                    CI);
+<span class="fc" id="L117">    private static final Pattern PAYMENT =</span>
+<span class="fc" id="L118">            Pattern.compile(</span>
+                    &quot;(?&lt;![a-z])(qris|[aou]ris|debit|credit|ovo|gopay|go-?pay|shopee?pay|dana|linkaja|e-?money|transfer)(?![a-z])&quot;,
+                    CI);
+<span class="fc" id="L121">    private static final Pattern TENDERED =</span>
+<span class="fc" id="L122">            Pattern.compile(</span>
+                    &quot;(?&lt;![a-z])(tunai|tuna[l1!|]|tuna(?=[\\s:;=.,]*(?:rp)?[\\s\\d.,]+$)&quot;
+                            + &quot;|cash|uang|bayar|dibayar|paid|payment|pembayaran)(?![a-z])&quot;,
+                    CI);
+
+    /** Nominal total yang digit terakhirnya hilang/terbaca simbol: &quot;191,47&quot;, &quot;191,4/5&quot;. */
+<span class="fc" id="L128">    private static final Pattern PARTIAL =</span>
+<span class="fc" id="L129">            Pattern.compile(&quot;(?&lt;![\\dA-Za-z])(\\d{1,3})[.,](\\d{1,2})(?![\\dA-Za-z%])&quot;);</span>
+
+<span class="fc" id="L131">    private static final Pattern PAREN_TAX =</span>
+<span class="fc" id="L132">            Pattern.compile(&quot;\\([^)]*(ppn|pajak|tax|vat|pb1|pb2|service)[^)]*\\)&quot;, CI);</span>
+<span class="fc" id="L133">    private static final Pattern SECTION_KEYWORD =</span>
+<span class="fc" id="L134">            Pattern.compile(</span>
+                    &quot;(rincian|detail|keterangan|item|qty|telp|tlp|^hp|^no\\.?\\s*struk|fax|wc:|tunai\\b.*\\()&quot;,
+                    CI);
+<span class="fc" id="L137">    private static final Pattern MERCHANT_SKIP =</span>
+<span class="fc" id="L138">            Pattern.compile(</span>
+                    &quot;(?&lt;![a-z])(total|jumlah|net{1,2}o?|amount|kembali|change|diskon|discount|promo|ppn|vat|tax|saldo|balance|serah)&quot;,
+                    CI);
+<span class="fc" id="L141">    private static final Pattern CURRENCY_MARK =</span>
+<span class="fc" id="L142">            Pattern.compile(&quot;(?&lt;![a-z])(rp|idr|rub)(?![a-z])&quot;, CI);</span>
+<span class="fc" id="L143">    private static final Pattern TOKEN =</span>
+<span class="fc" id="L144">            Pattern.compile(</span>
+                    &quot;(?&lt;![\\dA-Za-z])(\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)(?![\\dA-Za-z%])&quot;);
+<span class="fc" id="L146">    private static final Pattern THOUSANDS =</span>
+<span class="fc" id="L147">            Pattern.compile(&quot;\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{1,2})?&quot;);</span>
+
     /** Rangkaian angka yang huruf O-nya salah baca dari 0 (&quot;5O.OOO&quot;). */
-<span class="fc" id="L143">    private static final Pattern OCR_NUM = Pattern.compile(&quot;(?&lt;![A-Za-z])[\\dOo][\\dOo.,]*[\\dOo](?![A-Za-z])&quot;);</span>
-<span class="fc" id="L144">    private static final Pattern TIME = Pattern.compile(&quot;\\d{1,2}:\\d{2}&quot;);</span>
-<span class="fc" id="L145">    private static final Pattern ISO_DATE = Pattern.compile(&quot;(\\d{4})-(\\d{1,2})-(\\d{1,2})&quot;);</span>
-<span class="fc" id="L146">    private static final Pattern NUM_DATE = Pattern.compile(&quot;(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})&quot;);</span>
-<span class="fc" id="L147">    private static final Pattern NAME_DATE = Pattern.compile(&quot;(\\d{1,2})\\s+([A-Za-z]{3,9})\\.?\\s+(\\d{4})&quot;);</span>
+<span class="fc" id="L150">    private static final Pattern OCR_NUM =</span>
+<span class="fc" id="L151">            Pattern.compile(&quot;(?&lt;![A-Za-z])[\\dOo][\\dOo.,]*[\\dOo](?![A-Za-z])&quot;);</span>
 
-<span class="fc" id="L149">    private static final Map&lt;String, Integer&gt; MONTHS = months();</span>
+<span class="fc" id="L153">    private static final Pattern TIME = Pattern.compile(&quot;\\d{1,2}:\\d{2}&quot;);</span>
+<span class="fc" id="L154">    private static final Pattern ISO_DATE = Pattern.compile(&quot;(\\d{4})-(\\d{1,2})-(\\d{1,2})&quot;);</span>
+<span class="fc" id="L155">    private static final Pattern NUM_DATE =</span>
+<span class="fc" id="L156">            Pattern.compile(&quot;(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})&quot;);</span>
+<span class="fc" id="L157">    private static final Pattern NAME_DATE =</span>
+<span class="fc" id="L158">            Pattern.compile(&quot;(\\d{1,2})\\s+([A-Za-z]{3,9})\\.?\\s+(\\d{4})&quot;);</span>
 
-    private ReceiptParser() {
-    }
+<span class="fc" id="L160">    private static final Map&lt;String, Integer&gt; MONTHS = months();</span>
+
+    private ReceiptParser() {}
 
     private static Map&lt;String, Integer&gt; months() {
-<span class="fc" id="L155">        Map&lt;String, Integer&gt; map = new HashMap&lt;&gt;();</span>
-<span class="fc" id="L156">        String[][] names = {</span>
-                { &quot;jan&quot;, &quot;january&quot; }, { &quot;feb&quot;, &quot;february&quot; }, { &quot;mar&quot;, &quot;march&quot; }, { &quot;apr&quot;, &quot;april&quot; },
-                { &quot;mei&quot;, &quot;may&quot; }, { &quot;jun&quot;, &quot;june&quot; }, { &quot;jul&quot;, &quot;july&quot; }, { &quot;agu&quot;, &quot;august&quot; },
-                { &quot;sep&quot;, &quot;september&quot; }, { &quot;okt&quot;, &quot;october&quot; }, { &quot;nov&quot;, &quot;november&quot; }, { &quot;des&quot;, &quot;december&quot; },
+<span class="fc" id="L165">        Map&lt;String, Integer&gt; map = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L166">        String[][] names = {</span>
+            {&quot;jan&quot;, &quot;january&quot;}, {&quot;feb&quot;, &quot;february&quot;}, {&quot;mar&quot;, &quot;march&quot;}, {&quot;apr&quot;, &quot;april&quot;},
+            {&quot;mei&quot;, &quot;may&quot;}, {&quot;jun&quot;, &quot;june&quot;}, {&quot;jul&quot;, &quot;july&quot;}, {&quot;agu&quot;, &quot;august&quot;},
+            {&quot;sep&quot;, &quot;september&quot;}, {&quot;okt&quot;, &quot;october&quot;}, {&quot;nov&quot;, &quot;november&quot;}, {&quot;des&quot;, &quot;december&quot;},
         };
-<span class="fc bfc" id="L161" title="All 2 branches covered.">        for (int i = 0; i &lt; names.length; i++) {</span>
-<span class="fc bfc" id="L162" title="All 2 branches covered.">            for (String alias : names[i]) {</span>
-<span class="fc" id="L163">                map.put(alias, i + 1);</span>
+<span class="fc bfc" id="L171" title="All 2 branches covered.">        for (int i = 0; i &lt; names.length; i++) {</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">            for (String alias : names[i]) {</span>
+<span class="fc" id="L173">                map.put(alias, i + 1);</span>
             }
         }
-<span class="fc" id="L166">        map.put(&quot;aug&quot;, 8);</span>
-<span class="fc" id="L167">        map.put(&quot;agt&quot;, 8);</span>
-<span class="fc" id="L168">        map.put(&quot;ags&quot;, 8);</span>
-<span class="fc" id="L169">        map.put(&quot;sept&quot;, 9);</span>
-<span class="fc" id="L170">        map.put(&quot;oct&quot;, 10);</span>
-<span class="fc" id="L171">        map.put(&quot;dec&quot;, 12);</span>
-<span class="fc" id="L172">        return Map.copyOf(map);</span>
+<span class="fc" id="L176">        map.put(&quot;aug&quot;, 8);</span>
+<span class="fc" id="L177">        map.put(&quot;agt&quot;, 8);</span>
+<span class="fc" id="L178">        map.put(&quot;ags&quot;, 8);</span>
+<span class="fc" id="L179">        map.put(&quot;sept&quot;, 9);</span>
+<span class="fc" id="L180">        map.put(&quot;oct&quot;, 10);</span>
+<span class="fc" id="L181">        map.put(&quot;dec&quot;, 12);</span>
+<span class="fc" id="L182">        return Map.copyOf(map);</span>
     }
 
     static Extracted parse(String ocrText) {
-<span class="fc bfc" id="L176" title="All 4 branches covered.">        if (ocrText == null || ocrText.isBlank()) {</span>
-<span class="fc" id="L177">            return new Extracted(null, null, null, 0);</span>
+<span class="fc bfc" id="L186" title="All 4 branches covered.">        if (ocrText == null || ocrText.isBlank()) {</span>
+<span class="fc" id="L187">            return new Extracted(null, null, null, 0);</span>
         }
-<span class="fc" id="L179">        List&lt;String&gt; lines = new ArrayList&lt;&gt;();</span>
-<span class="fc bfc" id="L180" title="All 2 branches covered.">        for (String raw : ocrText.split(&quot;\\R&quot;)) {</span>
-<span class="fc" id="L181">            String line = raw.trim();</span>
-<span class="fc bfc" id="L182" title="All 2 branches covered.">            if (!line.isEmpty()) {</span>
-<span class="fc" id="L183">                lines.add(line);</span>
+<span class="fc" id="L189">        List&lt;String&gt; lines = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L190" title="All 2 branches covered.">        for (String raw : ocrText.split(&quot;\\R&quot;)) {</span>
+<span class="fc" id="L191">            String line = raw.trim();</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">            if (!line.isEmpty()) {</span>
+<span class="fc" id="L193">                lines.add(line);</span>
             }
         }
-<span class="pc bpc" id="L186" title="1 of 2 branches missed.">        if (lines.isEmpty()) {</span>
-<span class="nc" id="L187">            return new Extracted(null, null, null, 0);</span>
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">        if (lines.isEmpty()) {</span>
+<span class="nc" id="L197">            return new Extracted(null, null, null, 0);</span>
         }
 
-<span class="fc" id="L190">        Acc acc = new Acc();</span>
-<span class="fc" id="L191">        Kind pendingKind = Kind.NONE;</span>
-<span class="fc" id="L192">        int pendingLeft = 0;</span>
+<span class="fc" id="L200">        Acc acc = new Acc();</span>
+<span class="fc" id="L201">        Kind pendingKind = Kind.NONE;</span>
+<span class="fc" id="L202">        int pendingLeft = 0;</span>
 
-<span class="fc bfc" id="L194" title="All 2 branches covered.">        for (String raw : lines) {</span>
-<span class="fc" id="L195">            String t = normalize(raw);</span>
-<span class="fc bfc" id="L196" title="All 2 branches covered.">            boolean carry = pendingLeft &gt; 0;</span>
-<span class="fc bfc" id="L197" title="All 2 branches covered.">            if (carry) {</span>
-<span class="fc" id="L198">                pendingLeft--;</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">        for (String raw : lines) {</span>
+<span class="fc" id="L205">            String t = normalize(raw);</span>
+<span class="fc bfc" id="L206" title="All 2 branches covered.">            boolean carry = pendingLeft &gt; 0;</span>
+<span class="fc bfc" id="L207" title="All 2 branches covered.">            if (carry) {</span>
+<span class="fc" id="L208">                pendingLeft--;</span>
             }
-<span class="fc" id="L200">            Kind kind = classify(t);</span>
+<span class="fc" id="L210">            Kind kind = classify(t);</span>
 
-<span class="fc bfc" id="L202" title="All 2 branches covered.">            if (kind == Kind.NONE) {</span>
-<span class="fc" id="L203">                boolean consumed = false;</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">            if (kind == Kind.NONE) {</span>
+<span class="fc" id="L213">                boolean consumed = false;</span>
                 // label di baris sebelumnya, angka di baris ini (&quot;GRAND TOTAL&quot; / &quot;Rp&quot; /
                 // &quot;55.000&quot;)
-<span class="fc bfc" id="L206" title="All 6 branches covered.">                if (carry &amp;&amp; valueOnly(t) &amp;&amp; !dateish(t)) {</span>
-<span class="fc" id="L207">                    Long v = lineValue(t, pendingKind.strongOnly);</span>
-<span class="fc bfc" id="L208" title="All 2 branches covered.">                    if (v != null) {</span>
-<span class="fc" id="L209">                        acc.add(pendingKind, v);</span>
-<span class="fc" id="L210">                        pendingLeft = 0;</span>
-<span class="fc" id="L211">                        consumed = true;</span>
+<span class="fc bfc" id="L216" title="All 6 branches covered.">                if (carry &amp;&amp; valueOnly(t) &amp;&amp; !dateish(t)) {</span>
+<span class="fc" id="L217">                    Long v = lineValue(t, pendingKind.strongOnly);</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">                    if (v != null) {</span>
+<span class="fc" id="L219">                        acc.add(pendingKind, v);</span>
+<span class="fc" id="L220">                        pendingLeft = 0;</span>
+<span class="fc" id="L221">                        consumed = true;</span>
                     }
                 }
-<span class="fc bfc" id="L214" title="All 2 branches covered.">                if (!consumed) {</span>
-<span class="fc" id="L215">                    Long f = lineValue(t, true);</span>
-<span class="fc bfc" id="L216" title="All 2 branches covered.">                    if (f != null) {</span>
-<span class="fc" id="L217">                        acc.fallback = max(acc.fallback, f);</span>
+<span class="fc bfc" id="L224" title="All 2 branches covered.">                if (!consumed) {</span>
+<span class="fc" id="L225">                    Long f = lineValue(t, true);</span>
+<span class="fc bfc" id="L226" title="All 2 branches covered.">                    if (f != null) {</span>
+<span class="fc" id="L227">                        acc.fallback = max(acc.fallback, f);</span>
                     }
-<span class="fc" id="L219">                }</span>
+<span class="fc" id="L229">                }</span>
                 continue;
             }
 
-<span class="fc" id="L223">            pendingLeft = 0;</span>
-<span class="fc bfc" id="L224" title="All 6 branches covered.">            boolean totalLike = kind == Kind.GRAND || kind == Kind.STRICT || kind == Kind.WEAK;</span>
-<span class="fc bfc" id="L225" title="All 2 branches covered.">            String valueText = totalLike ? PAREN_TAX.matcher(t).replaceAll(&quot; &quot;) : t;</span>
-<span class="fc" id="L226">            Long v = lineValue(valueText, kind.strongOnly);</span>
-<span class="fc bfc" id="L227" title="All 2 branches covered.">            if (v != null) {</span>
-<span class="fc" id="L228">                acc.add(kind, v);</span>
-<span class="fc" id="L229">                continue;</span>
+<span class="fc" id="L233">            pendingLeft = 0;</span>
+<span class="fc bfc" id="L234" title="All 6 branches covered.">            boolean totalLike = kind == Kind.GRAND || kind == Kind.STRICT || kind == Kind.WEAK;</span>
+<span class="fc bfc" id="L235" title="All 2 branches covered.">            String valueText = totalLike ? PAREN_TAX.matcher(t).replaceAll(&quot; &quot;) : t;</span>
+<span class="fc" id="L236">            Long v = lineValue(valueText, kind.strongOnly);</span>
+<span class="fc bfc" id="L237" title="All 2 branches covered.">            if (v != null) {</span>
+<span class="fc" id="L238">                acc.add(kind, v);</span>
+<span class="fc" id="L239">                continue;</span>
             }
-<span class="fc bfc" id="L231" title="All 4 branches covered.">            if (kind == Kind.GRAND || kind == Kind.STRICT) {</span>
-<span class="fc" id="L232">                Matcher pm = PARTIAL.matcher(valueText);</span>
-<span class="fc bfc" id="L233" title="All 2 branches covered.">                while (pm.find()) {</span>
-<span class="fc bfc" id="L234" title="All 2 branches covered.">                    long scale = pm.group(2).length() == 1 ? 100L : 10L;</span>
-<span class="fc" id="L235">                    acc.partialLo = Long.parseLong(pm.group(1) + pm.group(2)) * scale;</span>
-<span class="fc" id="L236">                    acc.partialHi = acc.partialLo + scale - 1;</span>
-<span class="fc" id="L237">                }</span>
+<span class="fc bfc" id="L241" title="All 4 branches covered.">            if (kind == Kind.GRAND || kind == Kind.STRICT) {</span>
+<span class="fc" id="L242">                Matcher pm = PARTIAL.matcher(valueText);</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">                while (pm.find()) {</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">                    long scale = pm.group(2).length() == 1 ? 100L : 10L;</span>
+<span class="fc" id="L245">                    acc.partialLo = Long.parseLong(pm.group(1) + pm.group(2)) * scale;</span>
+<span class="fc" id="L246">                    acc.partialHi = acc.partialLo + scale - 1;</span>
+<span class="fc" id="L247">                }</span>
             }
-<span class="fc" id="L239">            boolean hasNumber = TOKEN.matcher(t).find();</span>
-<span class="pc bpc" id="L240" title="1 of 18 branches missed.">            boolean carryable = kind == Kind.GRAND</span>
-                    || kind == Kind.STRICT
-                    || kind == Kind.SUBTOTAL
-                    || kind == Kind.PAYMENT
-                    || (!hasNumber
-                            &amp;&amp; (kind == Kind.CHANGE
-                                    || kind == Kind.FEE
-                                    || kind == Kind.DISCOUNT
-                                    || kind == Kind.TENDERED));
-<span class="fc bfc" id="L249" title="All 2 branches covered.">            if (carryable) {</span>
-<span class="fc" id="L250">                pendingKind = kind;</span>
-<span class="fc" id="L251">                pendingLeft = 3;</span>
+<span class="fc" id="L249">            boolean hasNumber = TOKEN.matcher(t).find();</span>
+<span class="pc bpc" id="L250" title="1 of 18 branches missed.">            boolean carryable =</span>
+                    kind == Kind.GRAND
+                            || kind == Kind.STRICT
+                            || kind == Kind.SUBTOTAL
+                            || kind == Kind.PAYMENT
+                            || (!hasNumber
+                                    &amp;&amp; (kind == Kind.CHANGE
+                                            || kind == Kind.FEE
+                                            || kind == Kind.DISCOUNT
+                                            || kind == Kind.TENDERED));
+<span class="fc bfc" id="L260" title="All 2 branches covered.">            if (carryable) {</span>
+<span class="fc" id="L261">                pendingKind = kind;</span>
+<span class="fc" id="L262">                pendingLeft = 3;</span>
             }
-<span class="fc" id="L253">        }</span>
+<span class="fc" id="L264">        }</span>
 
-<span class="fc" id="L255">        Long expected = null;</span>
-<span class="fc bfc" id="L256" title="All 2 branches covered.">        if (acc.subtotal != null) {</span>
-<span class="fc" id="L257">            long e = acc.subtotal + acc.fee - acc.disc;</span>
-<span class="fc bfc" id="L258" title="All 4 branches covered.">            if (e &gt;= 1 &amp;&amp; e &lt;= MAX_AMOUNT) {</span>
-<span class="fc" id="L259">                expected = e;</span>
+<span class="fc" id="L266">        Long expected = null;</span>
+<span class="fc bfc" id="L267" title="All 2 branches covered.">        if (acc.subtotal != null) {</span>
+<span class="fc" id="L268">            long e = acc.subtotal + acc.fee - acc.disc;</span>
+<span class="fc bfc" id="L269" title="All 4 branches covered.">            if (e &gt;= 1 &amp;&amp; e &lt;= MAX_AMOUNT) {</span>
+<span class="fc" id="L270">                expected = e;</span>
             }
         }
-<span class="fc" id="L262">        Long tenderedNet = null;</span>
-<span class="fc bfc" id="L263" title="All 6 branches covered.">        if (acc.tendered != null &amp;&amp; acc.change != null &amp;&amp; acc.tendered &gt; acc.change) {</span>
-<span class="fc" id="L264">            tenderedNet = acc.tendered - acc.change;</span>
+<span class="fc" id="L273">        Long tenderedNet = null;</span>
+<span class="fc bfc" id="L274" title="All 6 branches covered.">        if (acc.tendered != null &amp;&amp; acc.change != null &amp;&amp; acc.tendered &gt; acc.change) {</span>
+<span class="fc" id="L275">            tenderedNet = acc.tendered - acc.change;</span>
         }
 
-<span class="fc" id="L267">        Long amount = null;</span>
-<span class="fc" id="L268">        int amountConfidence = 0;</span>
-<span class="fc" id="L269">        boolean lowEvidence = false;</span>
+<span class="fc" id="L278">        Long amount = null;</span>
+<span class="fc" id="L279">        int amountConfidence = 0;</span>
+<span class="fc" id="L280">        boolean lowEvidence = false;</span>
 
-<span class="fc" id="L271">        Long primary = acc.grand;</span>
-<span class="fc bfc" id="L272" title="All 4 branches covered.">        if (primary == null &amp;&amp; !acc.strict.isEmpty()) {</span>
-<span class="fc bfc" id="L273" title="All 4 branches covered.">            primary = expected != null &amp;&amp; acc.strict.contains(expected)</span>
-<span class="fc" id="L274">                    ? expected</span>
-<span class="fc" id="L275">                    : acc.strict.get(acc.strict.size() - 1);</span>
+<span class="fc" id="L282">        Long primary = acc.grand;</span>
+<span class="fc bfc" id="L283" title="All 4 branches covered.">        if (primary == null &amp;&amp; !acc.strict.isEmpty()) {</span>
+            primary =
+<span class="fc bfc" id="L285" title="All 4 branches covered.">                    expected != null &amp;&amp; acc.strict.contains(expected)</span>
+<span class="fc" id="L286">                            ? expected</span>
+<span class="fc" id="L287">                            : acc.strict.get(acc.strict.size() - 1);</span>
         }
-<span class="fc" id="L277">        int base = 40;</span>
-<span class="fc bfc" id="L278" title="All 4 branches covered.">        if (primary == null &amp;&amp; acc.weak != null) {</span>
-<span class="fc" id="L279">            primary = acc.weak;</span>
-<span class="fc" id="L280">            base = 30;</span>
+<span class="fc" id="L289">        int base = 40;</span>
+<span class="fc bfc" id="L290" title="All 4 branches covered.">        if (primary == null &amp;&amp; acc.weak != null) {</span>
+<span class="fc" id="L291">            primary = acc.weak;</span>
+<span class="fc" id="L292">            base = 30;</span>
         }
 
         // Total terbaca tapi digit terakhirnya hilang (&quot;191,47&quot;): lengkapi dari bukti
@@ -286,476 +298,470 @@ final class ReceiptParser {
         // angka lain
         // (QRIS, tunai-kembalian, subtotal+pajak) yang bisa dipercaya; hasilnya
         // berkeyakinan rendah.
-<span class="fc" id="L289">        boolean partialUsed = false;</span>
-<span class="fc" id="L290">        Long partialPick = null;</span>
-<span class="fc bfc" id="L291" title="All 4 branches covered.">        if (primary == null &amp;&amp; acc.partialLo != null) {</span>
-<span class="fc" id="L292">            int hits = 0;</span>
-<span class="fc" id="L293">            Long[] evidence = {</span>
-<span class="fc" id="L294">                    expected, tenderedNet, acc.payment, taxDerived(acc, acc.partialLo, acc.partialHi)</span>
+<span class="fc" id="L301">        boolean partialUsed = false;</span>
+<span class="fc" id="L302">        Long partialPick = null;</span>
+<span class="fc bfc" id="L303" title="All 4 branches covered.">        if (primary == null &amp;&amp; acc.partialLo != null) {</span>
+<span class="fc" id="L304">            int hits = 0;</span>
+<span class="fc" id="L305">            Long[] evidence = {</span>
+<span class="fc" id="L306">                expected, tenderedNet, acc.payment, taxDerived(acc, acc.partialLo, acc.partialHi)</span>
             };
-<span class="fc bfc" id="L296" title="All 2 branches covered.">            for (Long c : evidence) {</span>
-<span class="pc bpc" id="L297" title="1 of 8 branches missed.">                if (c != null &amp;&amp; c &gt;= acc.partialLo &amp;&amp; c &lt;= acc.partialHi &amp;&amp; !c.equals(partialPick)) {</span>
-<span class="fc" id="L298">                    partialPick = c;</span>
-<span class="fc" id="L299">                    hits++;</span>
+<span class="fc bfc" id="L308" title="All 2 branches covered.">            for (Long c : evidence) {</span>
+<span class="fc bfc" id="L309" title="All 2 branches covered.">                if (c != null</span>
+<span class="pc bpc" id="L310" title="1 of 2 branches missed.">                        &amp;&amp; c &gt;= acc.partialLo</span>
+<span class="fc bfc" id="L311" title="All 2 branches covered.">                        &amp;&amp; c &lt;= acc.partialHi</span>
+<span class="fc bfc" id="L312" title="All 2 branches covered.">                        &amp;&amp; !c.equals(partialPick)) {</span>
+<span class="fc" id="L313">                    partialPick = c;</span>
+<span class="fc" id="L314">                    hits++;</span>
                 }
             }
-<span class="fc bfc" id="L302" title="All 2 branches covered.">            if (hits != 1) {</span>
-<span class="fc" id="L303">                partialPick = null;</span>
+<span class="fc bfc" id="L317" title="All 2 branches covered.">            if (hits != 1) {</span>
+<span class="fc" id="L318">                partialPick = null;</span>
             }
-<span class="fc bfc" id="L305" title="All 6 branches covered.">            boolean otherEvidence = expected != null || tenderedNet != null || acc.payment != null;</span>
-<span class="fc bfc" id="L306" title="All 4 branches covered.">            partialUsed = partialPick != null || !otherEvidence;</span>
+<span class="fc bfc" id="L320" title="All 6 branches covered.">            boolean otherEvidence = expected != null || tenderedNet != null || acc.payment != null;</span>
+<span class="fc bfc" id="L321" title="All 4 branches covered.">            partialUsed = partialPick != null || !otherEvidence;</span>
         }
 
-<span class="fc bfc" id="L309" title="All 2 branches covered.">        if (primary != null) {</span>
-<span class="fc" id="L310">            amount = primary;</span>
-<span class="fc" id="L311">            amountConfidence = base;</span>
+<span class="fc bfc" id="L324" title="All 2 branches covered.">        if (primary != null) {</span>
+<span class="fc" id="L325">            amount = primary;</span>
+<span class="fc" id="L326">            amountConfidence = base;</span>
             // subtotal + pajak bertarif baku (mis. PB1 10%) mengalahkan total yang salah
             // baca satu
             // digit, bahkan bila baris QRIS/tunai ikut salah baca sama.
-<span class="fc" id="L315">            Long byRate = rateValidated(acc);</span>
-<span class="fc bfc" id="L316" title="All 6 branches covered.">            if (byRate != null &amp;&amp; !byRate.equals(primary) &amp;&amp; confusable(primary, byRate)) {</span>
-<span class="fc" id="L317">                amount = byRate;</span>
-<span class="fc" id="L318">                amountConfidence += 10;</span>
-<span class="fc bfc" id="L319" title="All 2 branches covered.">            } else if (count(primary, acc.payment, tenderedNet, expected) &gt;= 1) {</span>
-<span class="fc" id="L320">                amountConfidence += 10;</span>
+<span class="fc" id="L330">            Long byRate = rateValidated(acc);</span>
+<span class="fc bfc" id="L331" title="All 6 branches covered.">            if (byRate != null &amp;&amp; !byRate.equals(primary) &amp;&amp; confusable(primary, byRate)) {</span>
+<span class="fc" id="L332">                amount = byRate;</span>
+<span class="fc" id="L333">                amountConfidence += 10;</span>
+<span class="fc bfc" id="L334" title="All 2 branches covered.">            } else if (count(primary, acc.payment, tenderedNet, expected) &gt;= 1) {</span>
+<span class="fc" id="L335">                amountConfidence += 10;</span>
             } else {
-<span class="fc" id="L322">                Long alt = alternative(primary, acc.payment, tenderedNet, expected);</span>
-<span class="fc bfc" id="L323" title="All 6 branches covered.">                if (alt == null &amp;&amp; acc.fee == 0 &amp;&amp; acc.disc == 0) {</span>
-<span class="fc" id="L324">                    alt = rateInferred(primary, acc.subtotal);</span>
+<span class="fc" id="L337">                Long alt = alternative(primary, acc.payment, tenderedNet, expected);</span>
+<span class="fc bfc" id="L338" title="All 6 branches covered.">                if (alt == null &amp;&amp; acc.fee == 0 &amp;&amp; acc.disc == 0) {</span>
+<span class="fc" id="L339">                    alt = rateInferred(primary, acc.subtotal);</span>
                 }
-<span class="fc bfc" id="L326" title="All 2 branches covered.">                if (alt != null) {</span>
-<span class="fc" id="L327">                    amount = alt;</span>
-<span class="fc" id="L328">                    amountConfidence += 10;</span>
+<span class="fc bfc" id="L341" title="All 2 branches covered.">                if (alt != null) {</span>
+<span class="fc" id="L342">                    amount = alt;</span>
+<span class="fc" id="L343">                    amountConfidence += 10;</span>
                 }
             }
-<span class="fc bfc" id="L331" title="All 2 branches covered.">        } else if (partialUsed) {</span>
-<span class="fc bfc" id="L332" title="All 2 branches covered.">            if (partialPick != null) {</span>
-<span class="fc" id="L333">                amount = partialPick;</span>
-<span class="fc" id="L334">                amountConfidence = 50;</span>
+<span class="fc bfc" id="L346" title="All 2 branches covered.">        } else if (partialUsed) {</span>
+<span class="fc bfc" id="L347" title="All 2 branches covered.">            if (partialPick != null) {</span>
+<span class="fc" id="L348">                amount = partialPick;</span>
+<span class="fc" id="L349">                amountConfidence = 50;</span>
             } else {
-<span class="fc" id="L336">                amount = acc.partialLo + (acc.partialHi - acc.partialLo + 1) / 2;</span>
-<span class="fc" id="L337">                amountConfidence = 25;</span>
-<span class="fc" id="L338">                lowEvidence = true;</span>
+<span class="fc" id="L351">                amount = acc.partialLo + (acc.partialHi - acc.partialLo + 1) / 2;</span>
+<span class="fc" id="L352">                amountConfidence = 25;</span>
+<span class="fc" id="L353">                lowEvidence = true;</span>
             }
-<span class="fc bfc" id="L340" title="All 2 branches covered.">        } else if (acc.payment != null) {</span>
-<span class="fc" id="L341">            amount = acc.payment;</span>
-<span class="fc" id="L342">            amountConfidence = 35;</span>
-<span class="fc bfc" id="L343" title="All 2 branches covered.">            if (count(amount, tenderedNet, expected) &gt;= 1) {</span>
-<span class="fc" id="L344">                amountConfidence += 10;</span>
+<span class="fc bfc" id="L355" title="All 2 branches covered.">        } else if (acc.payment != null) {</span>
+<span class="fc" id="L356">            amount = acc.payment;</span>
+<span class="fc" id="L357">            amountConfidence = 35;</span>
+<span class="fc bfc" id="L358" title="All 2 branches covered.">            if (count(amount, tenderedNet, expected) &gt;= 1) {</span>
+<span class="fc" id="L359">                amountConfidence += 10;</span>
             }
-<span class="fc bfc" id="L346" title="All 2 branches covered.">        } else if (tenderedNet != null) {</span>
-<span class="fc" id="L347">            amount = tenderedNet;</span>
-<span class="fc" id="L348">            amountConfidence = 35;</span>
-<span class="fc bfc" id="L349" title="All 2 branches covered.">            if (count(amount, expected) &gt;= 1) {</span>
-<span class="fc" id="L350">                amountConfidence += 10;</span>
+<span class="fc bfc" id="L361" title="All 2 branches covered.">        } else if (tenderedNet != null) {</span>
+<span class="fc" id="L362">            amount = tenderedNet;</span>
+<span class="fc" id="L363">            amountConfidence = 35;</span>
+<span class="fc bfc" id="L364" title="All 2 branches covered.">            if (count(amount, expected) &gt;= 1) {</span>
+<span class="fc" id="L365">                amountConfidence += 10;</span>
             }
-<span class="fc bfc" id="L352" title="All 2 branches covered.">        } else if (expected != null) {</span>
-<span class="fc" id="L353">            amount = expected;</span>
-<span class="fc" id="L354">            amountConfidence = 30;</span>
-<span class="fc bfc" id="L355" title="All 2 branches covered.">        } else if (acc.tendered != null) {</span>
-<span class="fc" id="L356">            amount = acc.tendered;</span>
-<span class="fc" id="L357">            amountConfidence = 20;</span>
-<span class="fc" id="L358">            lowEvidence = true;</span>
-<span class="fc bfc" id="L359" title="All 2 branches covered.">        } else if (acc.fallback != null) {</span>
-<span class="fc" id="L360">            amount = acc.fallback;</span>
-<span class="fc" id="L361">            amountConfidence = 15;</span>
-<span class="fc" id="L362">            lowEvidence = true;</span>
+<span class="fc bfc" id="L367" title="All 2 branches covered.">        } else if (expected != null) {</span>
+<span class="fc" id="L368">            amount = expected;</span>
+<span class="fc" id="L369">            amountConfidence = 30;</span>
+<span class="fc bfc" id="L370" title="All 2 branches covered.">        } else if (acc.tendered != null) {</span>
+<span class="fc" id="L371">            amount = acc.tendered;</span>
+<span class="fc" id="L372">            amountConfidence = 20;</span>
+<span class="fc" id="L373">            lowEvidence = true;</span>
+<span class="fc bfc" id="L374" title="All 2 branches covered.">        } else if (acc.fallback != null) {</span>
+<span class="fc" id="L375">            amount = acc.fallback;</span>
+<span class="fc" id="L376">            amountConfidence = 15;</span>
+<span class="fc" id="L377">            lowEvidence = true;</span>
         }
 
-<span class="fc" id="L365">        LocalDate date = findDate(lines);</span>
-<span class="fc" id="L366">        String merchant = findMerchant(lines);</span>
+<span class="fc" id="L380">        LocalDate date = findDate(lines);</span>
+<span class="fc" id="L381">        String merchant = findMerchant(lines);</span>
 
-<span class="fc" id="L368">        int confidence = 0;</span>
-<span class="fc bfc" id="L369" title="All 2 branches covered.">        if (amount != null) {</span>
-<span class="fc" id="L370">            confidence += amountConfidence;</span>
+<span class="fc" id="L383">        int confidence = 0;</span>
+<span class="fc bfc" id="L384" title="All 2 branches covered.">        if (amount != null) {</span>
+<span class="fc" id="L385">            confidence += amountConfidence;</span>
         }
-<span class="fc bfc" id="L372" title="All 2 branches covered.">        if (date != null) {</span>
-<span class="fc" id="L373">            confidence += 20;</span>
+<span class="fc bfc" id="L387" title="All 2 branches covered.">        if (date != null) {</span>
+<span class="fc" id="L388">            confidence += 20;</span>
         }
-<span class="fc bfc" id="L375" title="All 2 branches covered.">        if (merchant != null) {</span>
-<span class="fc" id="L376">            confidence += 20;</span>
+<span class="fc bfc" id="L390" title="All 2 branches covered.">        if (merchant != null) {</span>
+<span class="fc" id="L391">            confidence += 20;</span>
         }
-<span class="fc bfc" id="L378" title="All 2 branches covered.">        if (lines.size() &gt;= 5) {</span>
-<span class="fc" id="L379">            confidence += 20;</span>
+<span class="fc bfc" id="L393" title="All 2 branches covered.">        if (lines.size() &gt;= 5) {</span>
+<span class="fc" id="L394">            confidence += 20;</span>
         }
-<span class="fc bfc" id="L381" title="All 4 branches covered.">        if (amount != null &amp;&amp; lowEvidence) {</span>
-<span class="fc" id="L382">            confidence = Math.min(confidence, 55);</span>
+<span class="fc bfc" id="L396" title="All 4 branches covered.">        if (amount != null &amp;&amp; lowEvidence) {</span>
+<span class="fc" id="L397">            confidence = Math.min(confidence, 55);</span>
         }
 
-<span class="fc" id="L385">        return new Extracted(amount, date, merchant, Math.min(confidence, 100));</span>
+<span class="fc" id="L400">        return new Extracted(amount, date, merchant, Math.min(confidence, 100));</span>
     }
 
     /**
-     * Rapikan artefak OCR: &quot;Rp55.000,-&quot;, &quot;5O.OOO&quot;, &quot;55. 000&quot; menjadi &quot;Rp 55.000&quot;,
-     * &quot;50.000&quot;, &quot;55.000&quot;.
+     * Rapikan artefak OCR: &quot;Rp55.000,-&quot;, &quot;5O.OOO&quot;, &quot;55. 000&quot; menjadi &quot;Rp 55.000&quot;, &quot;50.000&quot;,
+     * &quot;55.000&quot;.
      */
     private static String normalize(String raw) {
-<span class="fc" id="L393">        String s = raw.replaceAll(&quot;(?&lt;=\\d)[.,]\\s*-+(?!\\d)&quot;, &quot;&quot;);</span>
-<span class="fc" id="L394">        s = s.replaceAll(&quot;(?i)(?&lt;![a-z])(rp|idr)\\.?\\s*(?=\\d)&quot;, &quot;$1 &quot;);</span>
-<span class="fc" id="L395">        Matcher m = OCR_NUM.matcher(s);</span>
-<span class="fc" id="L396">        StringBuilder sb = new StringBuilder();</span>
-<span class="fc bfc" id="L397" title="All 2 branches covered.">        while (m.find()) {</span>
-<span class="fc" id="L398">            String g = m.group();</span>
-<span class="fc" id="L399">            boolean hasDigit = g.chars().anyMatch(Character::isDigit);</span>
-<span class="fc" id="L400">            m.appendReplacement(</span>
-<span class="fc bfc" id="L401" title="All 2 branches covered.">                    sb, Matcher.quoteReplacement(hasDigit ? g.replace('O', '0').replace('o', '0') : g));</span>
-<span class="fc" id="L402">        }</span>
-<span class="fc" id="L403">        m.appendTail(sb);</span>
-<span class="fc" id="L404">        s = sb.toString();</span>
-<span class="fc" id="L405">        s = s.replaceAll(&quot;(?&lt;=\\d[.,])\\s+(?=\\d{3}(?!\\d))&quot;, &quot;&quot;);</span>
-<span class="fc" id="L406">        s = s.replaceAll(&quot;(?&lt;=\\d)\\s+(?=[.,]\\d{3}(?!\\d))&quot;, &quot;&quot;);</span>
-<span class="fc" id="L407">        return s.replaceAll(&quot;\\s+&quot;, &quot; &quot;).trim();</span>
+<span class="fc" id="L408">        String s = raw.replaceAll(&quot;(?&lt;=\\d)[.,]\\s*-+(?!\\d)&quot;, &quot;&quot;);</span>
+<span class="fc" id="L409">        s = s.replaceAll(&quot;(?i)(?&lt;![a-z])(rp|idr)\\.?\\s*(?=\\d)&quot;, &quot;$1 &quot;);</span>
+<span class="fc" id="L410">        Matcher m = OCR_NUM.matcher(s);</span>
+<span class="fc" id="L411">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L412" title="All 2 branches covered.">        while (m.find()) {</span>
+<span class="fc" id="L413">            String g = m.group();</span>
+<span class="fc" id="L414">            boolean hasDigit = g.chars().anyMatch(Character::isDigit);</span>
+<span class="fc" id="L415">            m.appendReplacement(</span>
+                    sb,
+<span class="fc bfc" id="L417" title="All 2 branches covered.">                    Matcher.quoteReplacement(hasDigit ? g.replace('O', '0').replace('o', '0') : g));</span>
+<span class="fc" id="L418">        }</span>
+<span class="fc" id="L419">        m.appendTail(sb);</span>
+<span class="fc" id="L420">        s = sb.toString();</span>
+<span class="fc" id="L421">        s = s.replaceAll(&quot;(?&lt;=\\d[.,])\\s+(?=\\d{3}(?!\\d))&quot;, &quot;&quot;);</span>
+<span class="fc" id="L422">        s = s.replaceAll(&quot;(?&lt;=\\d)\\s+(?=[.,]\\d{3}(?!\\d))&quot;, &quot;&quot;);</span>
+<span class="fc" id="L423">        return s.replaceAll(&quot;\\s+&quot;, &quot; &quot;).trim();</span>
     }
 
     private static Kind classify(String t) {
-<span class="fc" id="L411">        boolean total = TOTAL_WORD.matcher(t).find();</span>
-<span class="fc bfc" id="L412" title="All 4 branches covered.">        boolean qualified = total &amp;&amp; QUALIFIED.matcher(t).find();</span>
-<span class="fc bfc" id="L413" title="All 2 branches covered.">        if (CHANGE.matcher(t).find()) {</span>
-<span class="fc" id="L414">            return Kind.CHANGE;</span>
+<span class="fc" id="L427">        boolean total = TOTAL_WORD.matcher(t).find();</span>
+<span class="fc bfc" id="L428" title="All 4 branches covered.">        boolean qualified = total &amp;&amp; QUALIFIED.matcher(t).find();</span>
+<span class="fc bfc" id="L429" title="All 2 branches covered.">        if (CHANGE.matcher(t).find()) {</span>
+<span class="fc" id="L430">            return Kind.CHANGE;</span>
         }
-<span class="fc bfc" id="L416" title="All 4 branches covered.">        if (!qualified &amp;&amp; IGNORE.matcher(t).find()) {</span>
-<span class="fc" id="L417">            return Kind.IGNORE;</span>
+<span class="fc bfc" id="L432" title="All 4 branches covered.">        if (!qualified &amp;&amp; IGNORE.matcher(t).find()) {</span>
+<span class="fc" id="L433">            return Kind.IGNORE;</span>
         }
-<span class="fc bfc" id="L419" title="All 2 branches covered.">        if (SUBTOTAL.matcher(t).find()) {</span>
-<span class="fc" id="L420">            return Kind.SUBTOTAL;</span>
+<span class="fc bfc" id="L435" title="All 2 branches covered.">        if (SUBTOTAL.matcher(t).find()) {</span>
+<span class="fc" id="L436">            return Kind.SUBTOTAL;</span>
         }
-<span class="fc bfc" id="L422" title="All 2 branches covered.">        if (GRAND.matcher(t).find()) {</span>
-<span class="fc" id="L423">            return Kind.GRAND;</span>
+<span class="fc bfc" id="L438" title="All 2 branches covered.">        if (GRAND.matcher(t).find()) {</span>
+<span class="fc" id="L439">            return Kind.GRAND;</span>
         }
-<span class="fc bfc" id="L425" title="All 4 branches covered.">        if (!qualified &amp;&amp; DISCOUNT.matcher(t).find()) {</span>
-<span class="fc" id="L426">            return Kind.DISCOUNT;</span>
+<span class="fc bfc" id="L441" title="All 4 branches covered.">        if (!qualified &amp;&amp; DISCOUNT.matcher(t).find()) {</span>
+<span class="fc" id="L442">            return Kind.DISCOUNT;</span>
         }
-<span class="fc bfc" id="L428" title="All 4 branches covered.">        if (!qualified &amp;&amp; FEE.matcher(t).find()) {</span>
-<span class="fc" id="L429">            return Kind.FEE;</span>
+<span class="fc bfc" id="L444" title="All 4 branches covered.">        if (!qualified &amp;&amp; FEE.matcher(t).find()) {</span>
+<span class="fc" id="L445">            return Kind.FEE;</span>
         }
-<span class="fc bfc" id="L431" title="All 2 branches covered.">        if (PAYMENT.matcher(t).find()) {</span>
-<span class="fc" id="L432">            return Kind.PAYMENT;</span>
+<span class="fc bfc" id="L447" title="All 2 branches covered.">        if (PAYMENT.matcher(t).find()) {</span>
+<span class="fc" id="L448">            return Kind.PAYMENT;</span>
         }
-<span class="fc bfc" id="L434" title="All 2 branches covered.">        if (TENDERED.matcher(t).find()) {</span>
-<span class="fc" id="L435">            return Kind.TENDERED;</span>
+<span class="fc bfc" id="L450" title="All 2 branches covered.">        if (TENDERED.matcher(t).find()) {</span>
+<span class="fc" id="L451">            return Kind.TENDERED;</span>
         }
-<span class="fc bfc" id="L437" title="All 2 branches covered.">        if (total) {</span>
-<span class="fc" id="L438">            return Kind.STRICT;</span>
+<span class="fc bfc" id="L453" title="All 2 branches covered.">        if (total) {</span>
+<span class="fc" id="L454">            return Kind.STRICT;</span>
         }
-<span class="fc bfc" id="L440" title="All 2 branches covered.">        if (WEAK_WORD.matcher(t).find()) {</span>
-<span class="fc" id="L441">            return Kind.WEAK;</span>
+<span class="fc bfc" id="L456" title="All 2 branches covered.">        if (WEAK_WORD.matcher(t).find()) {</span>
+<span class="fc" id="L457">            return Kind.WEAK;</span>
         }
-<span class="fc" id="L443">        return Kind.NONE;</span>
+<span class="fc" id="L459">        return Kind.NONE;</span>
     }
 
     /**
-     * Nominal paling kanan di baris (nominal struk rata kanan). Angka kecil polos
-     * seperti jumlah item
-     * (&quot;TOTAL 3 ITEM 55.000&quot;) dan persen (&quot;PPN 10%&quot;) diabaikan.
+     * Nominal paling kanan di baris (nominal struk rata kanan). Angka kecil polos seperti jumlah
+     * item (&quot;TOTAL 3 ITEM 55.000&quot;) dan persen (&quot;PPN 10%&quot;) diabaikan.
      */
     private static Long lineValue(String t, boolean strongOnly) {
-<span class="fc" id="L452">        boolean currency = CURRENCY_MARK.matcher(t).find();</span>
-<span class="fc" id="L453">        Long result = null;</span>
-<span class="fc" id="L454">        Matcher m = TOKEN.matcher(t);</span>
-<span class="fc bfc" id="L455" title="All 2 branches covered.">        while (m.find()) {</span>
-<span class="fc" id="L456">            String token = m.group(1);</span>
-<span class="fc" id="L457">            Long v = toRupiah(token);</span>
-<span class="fc bfc" id="L458" title="All 2 branches covered.">            if (v == null) {</span>
-<span class="fc" id="L459">                continue;</span>
+<span class="fc" id="L467">        boolean currency = CURRENCY_MARK.matcher(t).find();</span>
+<span class="fc" id="L468">        Long result = null;</span>
+<span class="fc" id="L469">        Matcher m = TOKEN.matcher(t);</span>
+<span class="fc bfc" id="L470" title="All 2 branches covered.">        while (m.find()) {</span>
+<span class="fc" id="L471">            String token = m.group(1);</span>
+<span class="fc" id="L472">            Long v = toRupiah(token);</span>
+<span class="fc bfc" id="L473" title="All 2 branches covered.">            if (v == null) {</span>
+<span class="fc" id="L474">                continue;</span>
             }
-<span class="fc bfc" id="L461" title="All 6 branches covered.">            boolean strong = THOUSANDS.matcher(token).matches() || (currency &amp;&amp; v &gt;= 100);</span>
-<span class="fc bfc" id="L462" title="All 6 branches covered.">            if (strong || (!strongOnly &amp;&amp; v &gt;= 1000)) {</span>
-<span class="fc" id="L463">                result = v;</span>
+<span class="fc bfc" id="L476" title="All 6 branches covered.">            boolean strong = THOUSANDS.matcher(token).matches() || (currency &amp;&amp; v &gt;= 100);</span>
+<span class="fc bfc" id="L477" title="All 6 branches covered.">            if (strong || (!strongOnly &amp;&amp; v &gt;= 1000)) {</span>
+<span class="fc" id="L478">                result = v;</span>
             }
-<span class="fc" id="L465">        }</span>
-<span class="fc" id="L466">        return result;</span>
+<span class="fc" id="L480">        }</span>
+<span class="fc" id="L481">        return result;</span>
     }
 
-    /**
-     * Baris tanpa huruf selain penanda mata uang: &quot;Rp&quot;, &quot;:&quot;, &quot;55.000&quot;, &quot;Rp 55.000&quot;.
-     */
+    /** Baris tanpa huruf selain penanda mata uang: &quot;Rp&quot;, &quot;:&quot;, &quot;55.000&quot;, &quot;Rp 55.000&quot;. */
     private static boolean valueOnly(String t) {
-<span class="fc" id="L473">        return CURRENCY_MARK.matcher(t).replaceAll(&quot;&quot;).replaceAll(&quot;[^A-Za-z]&quot;, &quot;&quot;).isEmpty();</span>
+<span class="fc" id="L486">        return CURRENCY_MARK.matcher(t).replaceAll(&quot;&quot;).replaceAll(&quot;[^A-Za-z]&quot;, &quot;&quot;).isEmpty();</span>
     }
 
     private static boolean dateish(String t) {
-<span class="fc bfc" id="L477" title="All 2 branches covered.">        return ISO_DATE.matcher(t).find()</span>
-<span class="fc bfc" id="L478" title="All 2 branches covered.">                || NUM_DATE.matcher(t).find()</span>
-<span class="fc bfc" id="L479" title="All 2 branches covered.">                || NAME_DATE.matcher(t).find()</span>
-<span class="fc bfc" id="L480" title="All 2 branches covered.">                || TIME.matcher(t).find();</span>
+<span class="fc bfc" id="L490" title="All 2 branches covered.">        return ISO_DATE.matcher(t).find()</span>
+<span class="fc bfc" id="L491" title="All 2 branches covered.">                || NUM_DATE.matcher(t).find()</span>
+<span class="fc bfc" id="L492" title="All 2 branches covered.">                || NAME_DATE.matcher(t).find()</span>
+<span class="fc bfc" id="L493" title="All 2 branches covered.">                || TIME.matcher(t).find();</span>
     }
 
     private static int count(Long a, Long... evidence) {
-<span class="fc" id="L484">        int n = 0;</span>
-<span class="fc bfc" id="L485" title="All 2 branches covered.">        for (Long e : evidence) {</span>
-<span class="fc bfc" id="L486" title="All 4 branches covered.">            if (e != null &amp;&amp; e.equals(a)) {</span>
-<span class="fc" id="L487">                n++;</span>
+<span class="fc" id="L497">        int n = 0;</span>
+<span class="fc bfc" id="L498" title="All 2 branches covered.">        for (Long e : evidence) {</span>
+<span class="fc bfc" id="L499" title="All 4 branches covered.">            if (e != null &amp;&amp; e.equals(a)) {</span>
+<span class="fc" id="L500">                n++;</span>
             }
         }
-<span class="fc" id="L490">        return n;</span>
+<span class="fc" id="L503">        return n;</span>
     }
 
     /**
-     * Koreksi nominal total yang bertentangan dengan bukti lain: (1) dua bukti
-     * independen sepakat,
-     * atau (2) nominal pembayaran / tunai-kembalian hanya beda satu digit (salah
-     * baca OCR), atau
+     * Koreksi nominal total yang bertentangan dengan bukti lain: (1) dua bukti independen sepakat,
+     * atau (2) nominal pembayaran / tunai-kembalian hanya beda satu digit (salah baca OCR), atau
      * (3) tanpa bukti pembayaran, subtotal+pajak-diskon beda satu digit.
      */
     private static Long alternative(long primary, Long payment, Long tenderedNet, Long expected) {
-<span class="fc bfc" id="L501" title="All 2 branches covered.">        for (Long a : new Long[] { payment, tenderedNet, expected }) {</span>
-<span class="pc bpc" id="L502" title="1 of 6 branches missed.">            if (a != null &amp;&amp; a.longValue() != primary &amp;&amp; count(a, payment, tenderedNet, expected) &gt;= 2) {</span>
-<span class="fc" id="L503">                return a;</span>
+<span class="fc bfc" id="L512" title="All 2 branches covered.">        for (Long a : new Long[] {payment, tenderedNet, expected}) {</span>
+<span class="fc bfc" id="L513" title="All 2 branches covered.">            if (a != null</span>
+<span class="pc bpc" id="L514" title="1 of 2 branches missed.">                    &amp;&amp; a.longValue() != primary</span>
+<span class="fc bfc" id="L515" title="All 2 branches covered.">                    &amp;&amp; count(a, payment, tenderedNet, expected) &gt;= 2) {</span>
+<span class="fc" id="L516">                return a;</span>
             }
         }
-<span class="fc bfc" id="L506" title="All 2 branches covered.">        for (Long a : new Long[] { payment, tenderedNet }) {</span>
-<span class="fc bfc" id="L507" title="All 4 branches covered.">            if (a != null &amp;&amp; digitSimilar(primary, a)) {</span>
-<span class="fc" id="L508">                return a;</span>
+<span class="fc bfc" id="L519" title="All 2 branches covered.">        for (Long a : new Long[] {payment, tenderedNet}) {</span>
+<span class="fc bfc" id="L520" title="All 4 branches covered.">            if (a != null &amp;&amp; digitSimilar(primary, a)) {</span>
+<span class="fc" id="L521">                return a;</span>
             }
         }
-<span class="fc bfc" id="L511" title="All 8 branches covered.">        if (payment == null &amp;&amp; tenderedNet == null &amp;&amp; expected != null &amp;&amp; digitSimilar(primary, expected)) {</span>
-<span class="fc" id="L512">            return expected;</span>
+<span class="fc bfc" id="L524" title="All 6 branches covered.">        if (payment == null</span>
+                &amp;&amp; tenderedNet == null
+                &amp;&amp; expected != null
+<span class="fc bfc" id="L527" title="All 2 branches covered.">                &amp;&amp; digitSimilar(primary, expected)) {</span>
+<span class="fc" id="L528">            return expected;</span>
         }
-<span class="fc" id="L514">        return null;</span>
+<span class="fc" id="L530">        return null;</span>
     }
 
-<span class="fc" id="L517">    private static final double[] TAX_RATES = { 0.05, 0.10, 0.11, 0.12, 0.15, 0.155, 0.1655 };</span>
-<span class="fc" id="L518">    private static final double[] SINGLE_RATES = { 0.05, 0.10, 0.11, 0.12, 0.15 };</span>
+<span class="fc" id="L533">    private static final double[] TAX_RATES = {0.05, 0.10, 0.11, 0.12, 0.15, 0.155, 0.1655};</span>
+<span class="fc" id="L534">    private static final double[] SINGLE_RATES = {0.05, 0.10, 0.11, 0.12, 0.15};</span>
 
     /** Pasangan digit yang lazim tertukar OCR. */
-<span class="fc" id="L521">    private static final String[] CONFUSABLE = {</span>
-            &quot;39&quot;, &quot;38&quot;, &quot;08&quot;, &quot;06&quot;, &quot;09&quot;, &quot;17&quot;, &quot;56&quot;, &quot;58&quot;, &quot;68&quot;, &quot;27&quot;, &quot;49&quot;, &quot;35&quot;, &quot;69&quot;
+<span class="fc" id="L537">    private static final String[] CONFUSABLE = {</span>
+        &quot;39&quot;, &quot;38&quot;, &quot;08&quot;, &quot;06&quot;, &quot;09&quot;, &quot;17&quot;, &quot;56&quot;, &quot;58&quot;, &quot;68&quot;, &quot;27&quot;, &quot;49&quot;, &quot;35&quot;, &quot;69&quot;
     };
 
     /**
-     * true bila beda tepat satu digit DAN pasangan digitnya lazim salah baca OCR
-     * (3↔9, 0↔8, ...).
+     * true bila beda tepat satu digit DAN pasangan digitnya lazim salah baca OCR (3↔9, 0↔8, ...).
      */
     private static boolean confusable(long a, long b) {
-<span class="fc bfc" id="L530" title="All 2 branches covered.">        if (!digitSimilar(a, b)) {</span>
-<span class="fc" id="L531">            return false;</span>
+<span class="fc bfc" id="L545" title="All 2 branches covered.">        if (!digitSimilar(a, b)) {</span>
+<span class="fc" id="L546">            return false;</span>
         }
-<span class="fc" id="L533">        String x = Long.toString(a);</span>
-<span class="fc" id="L534">        String y = Long.toString(b);</span>
-<span class="pc bpc" id="L535" title="1 of 2 branches missed.">        for (int i = 0; i &lt; x.length(); i++) {</span>
-<span class="fc" id="L536">            char p = x.charAt(i);</span>
-<span class="fc" id="L537">            char q = y.charAt(i);</span>
-<span class="fc bfc" id="L538" title="All 2 branches covered.">            if (p != q) {</span>
-<span class="fc bfc" id="L539" title="All 2 branches covered.">                for (String c : CONFUSABLE) {</span>
-<span class="pc bpc" id="L540" title="1 of 4 branches missed.">                    if ((c.charAt(0) == p &amp;&amp; c.charAt(1) == q)</span>
-<span class="fc bfc" id="L541" title="All 4 branches covered.">                            || (c.charAt(0) == q &amp;&amp; c.charAt(1) == p)) {</span>
-<span class="fc" id="L542">                        return true;</span>
+<span class="fc" id="L548">        String x = Long.toString(a);</span>
+<span class="fc" id="L549">        String y = Long.toString(b);</span>
+<span class="pc bpc" id="L550" title="1 of 2 branches missed.">        for (int i = 0; i &lt; x.length(); i++) {</span>
+<span class="fc" id="L551">            char p = x.charAt(i);</span>
+<span class="fc" id="L552">            char q = y.charAt(i);</span>
+<span class="fc bfc" id="L553" title="All 2 branches covered.">            if (p != q) {</span>
+<span class="fc bfc" id="L554" title="All 2 branches covered.">                for (String c : CONFUSABLE) {</span>
+<span class="pc bpc" id="L555" title="1 of 4 branches missed.">                    if ((c.charAt(0) == p &amp;&amp; c.charAt(1) == q)</span>
+<span class="fc bfc" id="L556" title="All 4 branches covered.">                            || (c.charAt(0) == q &amp;&amp; c.charAt(1) == p)) {</span>
+<span class="fc" id="L557">                        return true;</span>
                     }
                 }
-<span class="fc" id="L545">                return false;</span>
+<span class="fc" id="L560">                return false;</span>
             }
         }
-<span class="nc" id="L548">        return false;</span>
+<span class="nc" id="L563">        return false;</span>
     }
 
-    /**
-     * subtotal + pajak, bila nominal pajak pas sebesar tarif baku x subtotal (tanpa
-     * diskon).
-     */
+    /** subtotal + pajak, bila nominal pajak pas sebesar tarif baku x subtotal (tanpa diskon). */
     private static Long rateValidated(Acc acc) {
-<span class="fc bfc" id="L556" title="All 6 branches covered.">        if (acc.subtotal == null || acc.fee &lt; 100 || acc.disc != 0) {</span>
-<span class="fc" id="L557">            return null;</span>
+<span class="fc bfc" id="L568" title="All 6 branches covered.">        if (acc.subtotal == null || acc.fee &lt; 100 || acc.disc != 0) {</span>
+<span class="fc" id="L569">            return null;</span>
         }
-<span class="fc bfc" id="L559" title="All 2 branches covered.">        for (double r : TAX_RATES) {</span>
-<span class="fc bfc" id="L560" title="All 2 branches covered.">            if (Math.abs(acc.fee - Math.round(acc.subtotal * r)) &lt;= 50) {</span>
-<span class="fc" id="L561">                return acc.subtotal + acc.fee;</span>
+<span class="fc bfc" id="L571" title="All 2 branches covered.">        for (double r : TAX_RATES) {</span>
+<span class="fc bfc" id="L572" title="All 2 branches covered.">            if (Math.abs(acc.fee - Math.round(acc.subtotal * r)) &lt;= 50) {</span>
+<span class="fc" id="L573">                return acc.subtotal + acc.fee;</span>
             }
         }
-<span class="fc" id="L564">        return null;</span>
+<span class="fc" id="L576">        return null;</span>
     }
 
     /**
-     * Baris pajak tidak terbaca: bila tepat satu subtotal x (1 + tarif baku) hanya
-     * beda satu digit
-     * &quot;lazim tertukar&quot; dari nominal terbaca, pakai nominal itu. Ambigu atau sudah
-     * cocok -&gt; null.
+     * Baris pajak tidak terbaca: bila tepat satu subtotal x (1 + tarif baku) hanya beda satu digit
+     * &quot;lazim tertukar&quot; dari nominal terbaca, pakai nominal itu. Ambigu atau sudah cocok -&gt; null.
      */
     private static Long rateInferred(long primary, Long subtotal) {
-<span class="fc bfc" id="L574" title="All 2 branches covered.">        if (subtotal == null) {</span>
-<span class="fc" id="L575">            return null;</span>
+<span class="fc bfc" id="L584" title="All 2 branches covered.">        if (subtotal == null) {</span>
+<span class="fc" id="L585">            return null;</span>
         }
-<span class="fc" id="L577">        Long found = null;</span>
-<span class="fc bfc" id="L578" title="All 2 branches covered.">        for (double r : SINGLE_RATES) {</span>
-<span class="fc" id="L579">            long cand = Math.round(subtotal * (1 + r));</span>
-<span class="fc bfc" id="L580" title="All 2 branches covered.">            if (cand == primary) {</span>
-<span class="fc" id="L581">                return null;</span>
+<span class="fc" id="L587">        Long found = null;</span>
+<span class="fc bfc" id="L588" title="All 2 branches covered.">        for (double r : SINGLE_RATES) {</span>
+<span class="fc" id="L589">            long cand = Math.round(subtotal * (1 + r));</span>
+<span class="fc bfc" id="L590" title="All 2 branches covered.">            if (cand == primary) {</span>
+<span class="fc" id="L591">                return null;</span>
             }
-<span class="fc bfc" id="L583" title="All 2 branches covered.">            if (confusable(primary, cand)) {</span>
-<span class="pc bpc" id="L584" title="1 of 4 branches missed.">                if (found != null &amp;&amp; found != cand) {</span>
-<span class="fc" id="L585">                    return null;</span>
+<span class="fc bfc" id="L593" title="All 2 branches covered.">            if (confusable(primary, cand)) {</span>
+<span class="pc bpc" id="L594" title="1 of 4 branches missed.">                if (found != null &amp;&amp; found != cand) {</span>
+<span class="fc" id="L595">                    return null;</span>
                 }
-<span class="fc" id="L587">                found = cand;</span>
+<span class="fc" id="L597">                found = cand;</span>
             }
         }
-<span class="fc" id="L590">        return found;</span>
+<span class="fc" id="L600">        return found;</span>
     }
 
     /**
-     * Subtotal tidak terbaca tapi nominal pajak ada: subtotal = pajak / tarif baku,
-     * total = subtotal
-     * + pajak. Hanya dipakai bila tepat satu tarif menghasilkan total di rentang
-     * [lo, hi].
+     * Subtotal tidak terbaca tapi nominal pajak ada: subtotal = pajak / tarif baku, total =
+     * subtotal + pajak. Hanya dipakai bila tepat satu tarif menghasilkan total di rentang [lo, hi].
      */
     private static Long taxDerived(Acc acc, long lo, long hi) {
-<span class="fc bfc" id="L600" title="All 4 branches covered.">        if (acc.fee &lt; 100 || acc.disc != 0) {</span>
-<span class="fc" id="L601">            return null;</span>
+<span class="fc bfc" id="L608" title="All 4 branches covered.">        if (acc.fee &lt; 100 || acc.disc != 0) {</span>
+<span class="fc" id="L609">            return null;</span>
         }
-<span class="fc" id="L603">        Long found = null;</span>
-<span class="fc bfc" id="L604" title="All 2 branches covered.">        for (double r : SINGLE_RATES) {</span>
-<span class="fc" id="L605">            long total = Math.round(acc.fee / r) + acc.fee;</span>
-<span class="fc bfc" id="L606" title="All 4 branches covered.">            if (total &gt;= lo &amp;&amp; total &lt;= hi) {</span>
-<span class="pc bpc" id="L607" title="3 of 4 branches missed.">                if (found != null &amp;&amp; found != total) {</span>
-<span class="nc" id="L608">                    return null;</span>
+<span class="fc" id="L611">        Long found = null;</span>
+<span class="fc bfc" id="L612" title="All 2 branches covered.">        for (double r : SINGLE_RATES) {</span>
+<span class="fc" id="L613">            long total = Math.round(acc.fee / r) + acc.fee;</span>
+<span class="fc bfc" id="L614" title="All 4 branches covered.">            if (total &gt;= lo &amp;&amp; total &lt;= hi) {</span>
+<span class="pc bpc" id="L615" title="3 of 4 branches missed.">                if (found != null &amp;&amp; found != total) {</span>
+<span class="nc" id="L616">                    return null;</span>
                 }
-<span class="fc" id="L610">                found = total;</span>
+<span class="fc" id="L618">                found = total;</span>
             }
         }
-<span class="fc" id="L613">        return found;</span>
+<span class="fc" id="L621">        return found;</span>
     }
 
     private static Long max(Long current, long candidate) {
-<span class="fc bfc" id="L617" title="All 4 branches covered.">        return current == null || candidate &gt; current ? Long.valueOf(candidate) : current;</span>
+<span class="fc bfc" id="L625" title="All 4 branches covered.">        return current == null || candidate &gt; current ? Long.valueOf(candidate) : current;</span>
     }
 
     /**
-     * true bila kedua angka sama panjang dan berbeda tepat satu digit (misread OCR
-     * khas: 3↔9, 0↔8).
+     * true bila kedua angka sama panjang dan berbeda tepat satu digit (misread OCR khas: 3↔9, 0↔8).
      */
     private static boolean digitSimilar(long a, long b) {
-<span class="fc" id="L625">        String x = Long.toString(a);</span>
-<span class="fc" id="L626">        String y = Long.toString(b);</span>
-<span class="fc bfc" id="L627" title="All 2 branches covered.">        if (x.length() != y.length()) {</span>
-<span class="fc" id="L628">            return false;</span>
+<span class="fc" id="L632">        String x = Long.toString(a);</span>
+<span class="fc" id="L633">        String y = Long.toString(b);</span>
+<span class="fc bfc" id="L634" title="All 2 branches covered.">        if (x.length() != y.length()) {</span>
+<span class="fc" id="L635">            return false;</span>
         }
-<span class="fc" id="L630">        int diff = 0;</span>
-<span class="fc bfc" id="L631" title="All 2 branches covered.">        for (int i = 0; i &lt; x.length(); i++) {</span>
-<span class="fc bfc" id="L632" title="All 4 branches covered.">            if (x.charAt(i) != y.charAt(i) &amp;&amp; ++diff &gt; 1) {</span>
-<span class="fc" id="L633">                return false;</span>
+<span class="fc" id="L637">        int diff = 0;</span>
+<span class="fc bfc" id="L638" title="All 2 branches covered.">        for (int i = 0; i &lt; x.length(); i++) {</span>
+<span class="fc bfc" id="L639" title="All 4 branches covered.">            if (x.charAt(i) != y.charAt(i) &amp;&amp; ++diff &gt; 1) {</span>
+<span class="fc" id="L640">                return false;</span>
             }
         }
-<span class="fc bfc" id="L636" title="All 2 branches covered.">        return diff == 1;</span>
+<span class="fc bfc" id="L643" title="All 2 branches covered.">        return diff == 1;</span>
     }
 
-    /**
-     * &quot;1.234.567&quot; → 1234567; &quot;45.000,50&quot; → 45000; &quot;1,234.56&quot; (en) → 1235; &quot;45000&quot; →
-     * 45000.
-     */
+    /** &quot;1.234.567&quot; → 1234567; &quot;45.000,50&quot; → 45000; &quot;1,234.56&quot; (en) → 1235; &quot;45000&quot; → 45000. */
     private static Long toRupiah(String token) {
         long value;
         try {
-<span class="fc bfc" id="L646" title="All 2 branches covered.">            if (Pattern.matches(&quot;\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?&quot;, token)) {</span>
-<span class="fc" id="L647">                value = Long.parseLong(token.split(&quot;,&quot;)[0].replace(&quot;.&quot;, &quot;&quot;));</span>
-<span class="fc bfc" id="L648" title="All 2 branches covered.">            } else if (Pattern.matches(&quot;\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?&quot;, token)) {</span>
-<span class="fc" id="L649">                value = Long.parseLong(token.split(&quot;\\.&quot;)[0].replace(&quot;,&quot;, &quot;&quot;));</span>
+<span class="fc bfc" id="L650" title="All 2 branches covered.">            if (Pattern.matches(&quot;\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?&quot;, token)) {</span>
+<span class="fc" id="L651">                value = Long.parseLong(token.split(&quot;,&quot;)[0].replace(&quot;.&quot;, &quot;&quot;));</span>
+<span class="fc bfc" id="L652" title="All 2 branches covered.">            } else if (Pattern.matches(&quot;\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?&quot;, token)) {</span>
+<span class="fc" id="L653">                value = Long.parseLong(token.split(&quot;\\.&quot;)[0].replace(&quot;,&quot;, &quot;&quot;));</span>
             } else {
-<span class="fc" id="L651">                double d = Double.parseDouble(token.replace(',', '.'));</span>
-<span class="fc bfc" id="L652" title="All 2 branches covered.">                if (!Double.isFinite(d)) {</span>
-<span class="fc" id="L653">                    return null;</span>
+<span class="fc" id="L655">                double d = Double.parseDouble(token.replace(',', '.'));</span>
+<span class="fc bfc" id="L656" title="All 2 branches covered.">                if (!Double.isFinite(d)) {</span>
+<span class="fc" id="L657">                    return null;</span>
                 }
-<span class="fc" id="L655">                value = Math.round(d);</span>
+<span class="fc" id="L659">                value = Math.round(d);</span>
             }
-<span class="fc" id="L657">        } catch (NumberFormatException ex) {</span>
-<span class="fc" id="L658">            return null;</span>
-<span class="fc" id="L659">        }</span>
-<span class="fc bfc" id="L660" title="All 4 branches covered.">        if (value &lt; 1 || value &gt; MAX_AMOUNT) {</span>
-<span class="fc" id="L661">            return null;</span>
+<span class="fc" id="L661">        } catch (NumberFormatException ex) {</span>
+<span class="fc" id="L662">            return null;</span>
+<span class="fc" id="L663">        }</span>
+<span class="fc bfc" id="L664" title="All 4 branches covered.">        if (value &lt; 1 || value &gt; MAX_AMOUNT) {</span>
+<span class="fc" id="L665">            return null;</span>
         }
-<span class="fc" id="L663">        return Long.valueOf(value);</span>
+<span class="fc" id="L667">        return Long.valueOf(value);</span>
     }
 
     private static LocalDate findDate(List&lt;String&gt; lines) {
-<span class="fc" id="L667">        LocalDate today = LocalDate.now();</span>
-<span class="fc bfc" id="L668" title="All 2 branches covered.">        for (String line : lines) {</span>
-<span class="fc" id="L669">            Matcher iso = ISO_DATE.matcher(line);</span>
-<span class="fc bfc" id="L670" title="All 2 branches covered.">            if (iso.find()) {</span>
-<span class="fc" id="L671">                LocalDate parsed = safeDate(</span>
-<span class="fc" id="L672">                        parseInt(iso.group(1)),</span>
-<span class="fc" id="L673">                        parseInt(iso.group(2)),</span>
-<span class="fc" id="L674">                        parseInt(iso.group(3)));</span>
-<span class="fc bfc" id="L675" title="All 2 branches covered.">                if (valid(parsed, today)) {</span>
-<span class="fc" id="L676">                    return parsed;</span>
+<span class="fc" id="L671">        LocalDate today = LocalDate.now();</span>
+<span class="fc bfc" id="L672" title="All 2 branches covered.">        for (String line : lines) {</span>
+<span class="fc" id="L673">            Matcher iso = ISO_DATE.matcher(line);</span>
+<span class="fc bfc" id="L674" title="All 2 branches covered.">            if (iso.find()) {</span>
+<span class="fc" id="L675">                LocalDate parsed =</span>
+<span class="fc" id="L676">                        safeDate(</span>
+<span class="fc" id="L677">                                parseInt(iso.group(1)),</span>
+<span class="fc" id="L678">                                parseInt(iso.group(2)),</span>
+<span class="fc" id="L679">                                parseInt(iso.group(3)));</span>
+<span class="fc bfc" id="L680" title="All 2 branches covered.">                if (valid(parsed, today)) {</span>
+<span class="fc" id="L681">                    return parsed;</span>
                 }
             }
-<span class="fc" id="L679">            Matcher num = NUM_DATE.matcher(line);</span>
-<span class="fc bfc" id="L680" title="All 2 branches covered.">            if (num.find()) {</span>
-<span class="fc" id="L681">                int a = parseInt(num.group(1));</span>
-<span class="fc" id="L682">                int b = parseInt(num.group(2));</span>
-<span class="fc" id="L683">                int y = parseInt(num.group(3));</span>
-<span class="fc bfc" id="L684" title="All 2 branches covered.">                if (y &lt; 100) {</span>
-<span class="fc" id="L685">                    y += 2000;</span>
+<span class="fc" id="L684">            Matcher num = NUM_DATE.matcher(line);</span>
+<span class="fc bfc" id="L685" title="All 2 branches covered.">            if (num.find()) {</span>
+<span class="fc" id="L686">                int a = parseInt(num.group(1));</span>
+<span class="fc" id="L687">                int b = parseInt(num.group(2));</span>
+<span class="fc" id="L688">                int y = parseInt(num.group(3));</span>
+<span class="fc bfc" id="L689" title="All 2 branches covered.">                if (y &lt; 100) {</span>
+<span class="fc" id="L690">                    y += 2000;</span>
                 }
-<span class="fc" id="L687">                int day = a;</span>
-<span class="fc" id="L688">                int month = b;</span>
-<span class="fc bfc" id="L689" title="All 4 branches covered.">                if (month &gt; 12 &amp;&amp; day &lt;= 12) {</span>
-<span class="fc" id="L690">                    month = day;</span>
-<span class="fc" id="L691">                    day = b;</span>
+<span class="fc" id="L692">                int day = a;</span>
+<span class="fc" id="L693">                int month = b;</span>
+<span class="fc bfc" id="L694" title="All 4 branches covered.">                if (month &gt; 12 &amp;&amp; day &lt;= 12) {</span>
+<span class="fc" id="L695">                    month = day;</span>
+<span class="fc" id="L696">                    day = b;</span>
                 }
-<span class="fc" id="L693">                LocalDate parsed = safeDate(y, month, day);</span>
-<span class="fc bfc" id="L694" title="All 2 branches covered.">                if (valid(parsed, today)) {</span>
-<span class="fc" id="L695">                    return parsed;</span>
+<span class="fc" id="L698">                LocalDate parsed = safeDate(y, month, day);</span>
+<span class="fc bfc" id="L699" title="All 2 branches covered.">                if (valid(parsed, today)) {</span>
+<span class="fc" id="L700">                    return parsed;</span>
                 }
             }
-<span class="fc" id="L698">            Matcher name = NAME_DATE.matcher(line);</span>
-<span class="fc bfc" id="L699" title="All 2 branches covered.">            if (name.find()) {</span>
-<span class="fc" id="L700">                Integer month = MONTHS.get(name.group(2).toLowerCase());</span>
-<span class="fc bfc" id="L701" title="All 2 branches covered.">                if (month != null) {</span>
-<span class="fc" id="L702">                    LocalDate parsed = safeDate(parseInt(name.group(3)), month, parseInt(name.group(1)));</span>
-<span class="fc bfc" id="L703" title="All 2 branches covered.">                    if (valid(parsed, today)) {</span>
-<span class="fc" id="L704">                        return parsed;</span>
+<span class="fc" id="L703">            Matcher name = NAME_DATE.matcher(line);</span>
+<span class="fc bfc" id="L704" title="All 2 branches covered.">            if (name.find()) {</span>
+<span class="fc" id="L705">                Integer month = MONTHS.get(name.group(2).toLowerCase());</span>
+<span class="fc bfc" id="L706" title="All 2 branches covered.">                if (month != null) {</span>
+<span class="fc" id="L707">                    LocalDate parsed =</span>
+<span class="fc" id="L708">                            safeDate(parseInt(name.group(3)), month, parseInt(name.group(1)));</span>
+<span class="fc bfc" id="L709" title="All 2 branches covered.">                    if (valid(parsed, today)) {</span>
+<span class="fc" id="L710">                        return parsed;</span>
                     }
                 }
             }
-<span class="fc" id="L708">        }</span>
-<span class="fc" id="L709">        return null;</span>
+<span class="fc" id="L714">        }</span>
+<span class="fc" id="L715">        return null;</span>
     }
 
     private static boolean valid(LocalDate date, LocalDate today) {
-<span class="fc bfc" id="L713" title="All 2 branches covered.">        return date != null</span>
-<span class="fc bfc" id="L714" title="All 2 branches covered.">                &amp;&amp; !date.isBefore(LocalDate.of(2000, 1, 1))</span>
-<span class="fc bfc" id="L715" title="All 2 branches covered.">                &amp;&amp; !date.isAfter(today.plusDays(1));</span>
+<span class="fc bfc" id="L719" title="All 2 branches covered.">        return date != null</span>
+<span class="fc bfc" id="L720" title="All 2 branches covered.">                &amp;&amp; !date.isBefore(LocalDate.of(2000, 1, 1))</span>
+<span class="fc bfc" id="L721" title="All 2 branches covered.">                &amp;&amp; !date.isAfter(today.plusDays(1));</span>
     }
 
     private static LocalDate safeDate(int year, int month, int day) {
-<span class="fc bfc" id="L719" title="All 8 branches covered.">        if (month &lt; 1 || month &gt; 12 || day &lt; 1 || day &gt; 31) {</span>
-<span class="fc" id="L720">            return null;</span>
+<span class="fc bfc" id="L725" title="All 8 branches covered.">        if (month &lt; 1 || month &gt; 12 || day &lt; 1 || day &gt; 31) {</span>
+<span class="fc" id="L726">            return null;</span>
         }
         try {
-<span class="fc" id="L723">            return LocalDate.of(year, month, day);</span>
-<span class="fc" id="L724">        } catch (RuntimeException ex) {</span>
-<span class="fc" id="L725">            return null;</span>
+<span class="fc" id="L729">            return LocalDate.of(year, month, day);</span>
+<span class="fc" id="L730">        } catch (RuntimeException ex) {</span>
+<span class="fc" id="L731">            return null;</span>
         }
     }
 
     private static int parseInt(String digits) {
         try {
-<span class="fc" id="L731">            return Integer.parseInt(digits);</span>
-<span class="fc" id="L732">        } catch (NumberFormatException ex) {</span>
-<span class="fc" id="L733">            return -1;</span>
+<span class="fc" id="L737">            return Integer.parseInt(digits);</span>
+<span class="fc" id="L738">        } catch (NumberFormatException ex) {</span>
+<span class="fc" id="L739">            return -1;</span>
         }
     }
 
     private static String findMerchant(List&lt;String&gt; lines) {
-<span class="fc bfc" id="L738" title="All 2 branches covered.">        for (String line : lines) {</span>
-<span class="fc" id="L739">            String letters = line.replaceAll(&quot;[^A-Za-z]&quot;, &quot;&quot;);</span>
-<span class="fc bfc" id="L740" title="All 2 branches covered.">            if (letters.length() &lt; 3) {</span>
-<span class="fc" id="L741">                continue;</span>
-            }
-<span class="fc bfc" id="L743" title="All 4 branches covered.">            if (line.replaceAll(&quot;[^0-9]&quot;, &quot;&quot;).length() &gt; letters.length() || dateish(line)) {</span>
-<span class="fc" id="L744">                continue;</span>
-            }
-<span class="fc bfc" id="L746" title="All 4 branches covered.">            if (MERCHANT_SKIP.matcher(line).find() || SECTION_KEYWORD.matcher(line).find()) {</span>
+<span class="fc bfc" id="L744" title="All 2 branches covered.">        for (String line : lines) {</span>
+<span class="fc" id="L745">            String letters = line.replaceAll(&quot;[^A-Za-z]&quot;, &quot;&quot;);</span>
+<span class="fc bfc" id="L746" title="All 2 branches covered.">            if (letters.length() &lt; 3) {</span>
 <span class="fc" id="L747">                continue;</span>
             }
-<span class="fc bfc" id="L749" title="All 4 branches covered.">            if (CURRENCY_MARK.matcher(line).find() &amp;&amp; TOKEN.matcher(line).find()) {</span>
+<span class="fc bfc" id="L749" title="All 4 branches covered.">            if (line.replaceAll(&quot;[^0-9]&quot;, &quot;&quot;).length() &gt; letters.length() || dateish(line)) {</span>
 <span class="fc" id="L750">                continue;</span>
             }
-<span class="fc" id="L752">            String cleaned = line.replaceAll(&quot;\\s+&quot;, &quot; &quot;).trim();</span>
-<span class="fc bfc" id="L753" title="All 2 branches covered.">            if (cleaned.length() &gt; 60) {</span>
-<span class="fc" id="L754">                cleaned = cleaned.substring(0, 60).trim();</span>
+<span class="fc bfc" id="L752" title="All 4 branches covered.">            if (MERCHANT_SKIP.matcher(line).find() || SECTION_KEYWORD.matcher(line).find()) {</span>
+<span class="fc" id="L753">                continue;</span>
             }
-<span class="fc" id="L756">            return cleaned;</span>
+<span class="fc bfc" id="L755" title="All 4 branches covered.">            if (CURRENCY_MARK.matcher(line).find() &amp;&amp; TOKEN.matcher(line).find()) {</span>
+<span class="fc" id="L756">                continue;</span>
+            }
+<span class="fc" id="L758">            String cleaned = line.replaceAll(&quot;\\s+&quot;, &quot; &quot;).trim();</span>
+<span class="fc bfc" id="L759" title="All 2 branches covered.">            if (cleaned.length() &gt; 60) {</span>
+<span class="fc" id="L760">                cleaned = cleaned.substring(0, 60).trim();</span>
+            }
+<span class="fc" id="L762">            return cleaned;</span>
         }
-<span class="fc" id="L758">        return null;</span>
+<span class="fc" id="L764">        return null;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

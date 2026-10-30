@@ -177,8 +177,10 @@ class ReceiptParserTest {
     }
 
     /** Varian nyata lain (psm 4 / hasil pra-pemrosesan): total terpotong "69.00" + "Oris". */
-    /** Teks OCR NYATA struk BEEPOS (sample/test.jpg, Tesseract 5.3.4 psm 6): subtotal ber-spasi
-     *  dan total rusak — bukti subtotal+pajak dan tunai−kembalian harus memulihkan 191.475. */
+    /**
+     * Teks OCR NYATA struk BEEPOS (sample/test.jpg, Tesseract 5.3.4 psm 6): subtotal ber-spasi dan
+     * total rusak — bukti subtotal+pajak dan tunai−kembalian harus memulihkan 191.475.
+     */
     @Test
     void realPhotoBeeposBrokenTotalResolvesViaEvidence() {
         ReceiptParser.Extracted e =
@@ -228,7 +230,8 @@ class ReceiptParserTest {
     }
 
     @Test
-    void misreadGrandTotalCorrectedBySubtotalSumAndPayment() {        ReceiptParser.Extracted e =
+    void misreadGrandTotalCorrectedBySubtotalSumAndPayment() {
+        ReceiptParser.Extracted e =
                 ReceiptParser.parse(
                         """
                         Kopi Calf Jatiwarna

@@ -12,18 +12,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Pra-pemrosesan foto struk sebelum masuk Tesseract (tanpa dependensi baru):
- * resize (maks 1600 px / naikkan bila terlalu kecil) → grayscale → contrast-stretch
- * persentil 2–98. Binerisasi Sauvola DAN mask-latar-gelap sengaja TIDAK dipakai:
- * Sauvola merusak digit tebal (&quot;69.300&quot; → &quot;== 9.900&quot;), sementara mask latar menghancurkan
- * angka di bawah bayangan gelap di atas kertas (kasus BEEPOS: baris Total jadi &quot;-¢&quot;).
- * Layanan pemindai memakai strategi best-of (teks asli vs teks pra-pemrosesan) sehingga
- * pra-pemrosesan tidak pernah bisa merugikan.
- * Gagal apa pun (format tak terbaca, I/O) → {@code false}; pemanggil tetap memakai gambar asli.
+ * Pra-pemrosesan foto struk sebelum masuk Tesseract (tanpa dependensi baru): resize (maks 1600 px /
+ * naikkan bila terlalu kecil) → grayscale → contrast-stretch persentil 2–98. Binerisasi Sauvola DAN
+ * mask-latar-gelap sengaja TIDAK dipakai: Sauvola merusak digit tebal (&quot;69.300&quot; → &quot;== 9.900&quot;),
+ * sementara mask latar menghancurkan angka di bawah bayangan gelap di atas kertas (kasus BEEPOS:
+ * baris Total jadi &quot;-¢&quot;). Layanan pemindai memakai strategi best-of (teks asli vs teks
+ * pra-pemrosesan) sehingga pra-pemrosesan tidak pernah bisa merugikan. Gagal apa pun (format tak
+ * terbaca, I/O) → {@code false}; pemanggil tetap memakai gambar asli.
  */
 final class ReceiptImagePreprocessor {
 
-<span class="fc" id="L26">    private static final Logger log = LoggerFactory.getLogger(ReceiptImagePreprocessor.class);</span>
+<span class="fc" id="L25">    private static final Logger log = LoggerFactory.getLogger(ReceiptImagePreprocessor.class);</span>
 
     static final int MAX_WIDTH = 1600;
     static final int MIN_WIDTH = 900;
@@ -33,41 +32,42 @@ final class ReceiptImagePreprocessor {
 
     static boolean preprocess(Path source, Path targetPng) {
         try {
-<span class="fc" id="L36">            BufferedImage image = ImageIO.read(source.toFile());</span>
-<span class="fc bfc" id="L37" title="All 2 branches covered.">            if (image == null) {</span>
-<span class="fc" id="L38">                return false;</span>
+<span class="fc" id="L35">            BufferedImage image = ImageIO.read(source.toFile());</span>
+<span class="fc bfc" id="L36" title="All 2 branches covered.">            if (image == null) {</span>
+<span class="fc" id="L37">                return false;</span>
             }
-<span class="fc" id="L40">            image = scale(image);</span>
-<span class="fc" id="L41">            int width = image.getWidth();</span>
-<span class="fc" id="L42">            int height = image.getHeight();</span>
-<span class="fc" id="L43">            int[] gray = stretchContrast(toGray(image));</span>
-<span class="fc" id="L44">            BufferedImage out = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);</span>
-<span class="fc" id="L45">            out.setRGB(0, 0, width, height, gray, 0, width);</span>
-<span class="fc" id="L46">            return ImageIO.write(out, &quot;png&quot;, targetPng.toFile());</span>
-<span class="fc" id="L47">        } catch (IOException | RuntimeException ex) {</span>
-<span class="fc" id="L48">            log.debug(&quot;pra-pemrosesan struk gagal — tetap pakai gambar asli&quot;, ex);</span>
-<span class="fc" id="L49">            return false;</span>
+<span class="fc" id="L39">            image = scale(image);</span>
+<span class="fc" id="L40">            int width = image.getWidth();</span>
+<span class="fc" id="L41">            int height = image.getHeight();</span>
+<span class="fc" id="L42">            int[] gray = stretchContrast(toGray(image));</span>
+<span class="fc" id="L43">            BufferedImage out = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);</span>
+<span class="fc" id="L44">            out.setRGB(0, 0, width, height, gray, 0, width);</span>
+<span class="fc" id="L45">            return ImageIO.write(out, &quot;png&quot;, targetPng.toFile());</span>
+<span class="fc" id="L46">        } catch (IOException | RuntimeException ex) {</span>
+<span class="fc" id="L47">            log.debug(&quot;pra-pemrosesan struk gagal — tetap pakai gambar asli&quot;, ex);</span>
+<span class="fc" id="L48">            return false;</span>
         }
     }
 
     static BufferedImage scale(BufferedImage image) {
-<span class="fc" id="L54">        int width = image.getWidth();</span>
-<span class="fc" id="L55">        int height = image.getHeight();</span>
-<span class="fc" id="L56">        double factor = 1.0;</span>
-<span class="fc bfc" id="L57" title="All 2 branches covered.">        if ((long) width * height &gt; MAX_PIXELS) {</span>
-<span class="fc" id="L58">            factor = Math.sqrt((double) MAX_PIXELS / ((long) width * height));</span>
+<span class="fc" id="L53">        int width = image.getWidth();</span>
+<span class="fc" id="L54">        int height = image.getHeight();</span>
+<span class="fc" id="L55">        double factor = 1.0;</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        if ((long) width * height &gt; MAX_PIXELS) {</span>
+<span class="fc" id="L57">            factor = Math.sqrt((double) MAX_PIXELS / ((long) width * height));</span>
         }
-<span class="fc bfc" id="L60" title="All 2 branches covered.">        if (width * factor &gt; MAX_WIDTH) {</span>
-<span class="fc" id="L61">            factor = (double) MAX_WIDTH / width;</span>
-<span class="pc bpc" id="L62" title="1 of 4 branches missed.">        } else if (width * factor &lt; MIN_WIDTH &amp;&amp; width &lt; MIN_WIDTH) {</span>
-<span class="fc" id="L63">            factor = Math.min((double) MIN_WIDTH / width * 2, (double) MAX_WIDTH / width);</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        if (width * factor &gt; MAX_WIDTH) {</span>
+<span class="fc" id="L60">            factor = (double) MAX_WIDTH / width;</span>
+<span class="pc bpc" id="L61" title="1 of 4 branches missed.">        } else if (width * factor &lt; MIN_WIDTH &amp;&amp; width &lt; MIN_WIDTH) {</span>
+<span class="fc" id="L62">            factor = Math.min((double) MIN_WIDTH / width * 2, (double) MAX_WIDTH / width);</span>
         }
-<span class="fc bfc" id="L65" title="All 2 branches covered.">        if (Math.abs(factor - 1.0) &lt; 0.01) {</span>
-<span class="fc" id="L66">            return image;</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (Math.abs(factor - 1.0) &lt; 0.01) {</span>
+<span class="fc" id="L65">            return image;</span>
         }
-<span class="fc" id="L68">        int targetWidth = Math.max(1, (int) Math.round(width * factor));</span>
-<span class="fc" id="L69">        int targetHeight = Math.max(1, (int) Math.round(height * factor));</span>
-<span class="fc" id="L70">        BufferedImage scaled = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);</span>
+<span class="fc" id="L67">        int targetWidth = Math.max(1, (int) Math.round(width * factor));</span>
+<span class="fc" id="L68">        int targetHeight = Math.max(1, (int) Math.round(height * factor));</span>
+<span class="fc" id="L69">        BufferedImage scaled =</span>
+                new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
 <span class="fc" id="L71">        Graphics2D g = scaled.createGraphics();</span>
 <span class="fc" id="L72">        g.setRenderingHint(</span>
                 RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
@@ -126,6 +126,5 @@ final class ReceiptImagePreprocessor {
         }
 <span class="fc" id="L127">        return out;</span>
     }
-
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

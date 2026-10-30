@@ -9,24 +9,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parse heuristik teks OCR struk menjadi nominal, tanggal, dan nama merchant.
- * Murni (tanpa I/O)
- * agar mudah di-unit-test. Format angka mengikuti struk Indonesia (titik =
- * ribuan, koma = desimal)
+ * Parse heuristik teks OCR struk menjadi nominal, tanggal, dan nama merchant. Murni (tanpa I/O)
+ * agar mudah di-unit-test. Format angka mengikuti struk Indonesia (titik = ribuan, koma = desimal)
  * dengan toleransi format Inggris.
  *
- * <p>
- * Pemilihan nominal: tiap baris diklasifikasi (grand total, total, subtotal,
- * diskon, pajak,
- * pembayaran, tunai, kembalian). Nominal dipilih dari baris total, lalu
- * divalidasi silang dengan
- * bukti lain (subtotal + pajak - diskon, nominal QRIS/debit, tunai -
- * kembalian).
+ * <p>Pemilihan nominal: tiap baris diklasifikasi (grand total, total, subtotal, diskon, pajak,
+ * pembayaran, tunai, kembalian). Nominal dipilih dari baris total, lalu divalidasi silang dengan
+ * bukti lain (subtotal + pajak - diskon, nominal QRIS/debit, tunai - kembalian).
  */
 final class ReceiptParser {
 
-    record Extracted(Long amount, LocalDate date, String merchant, int confidence) {
-    }
+    record Extracted(Long amount, LocalDate date, String merchant, int confidence) {}
 
     static final long MAX_AMOUNT = 999_999_999_999L;
 
@@ -59,11 +52,10 @@ final class ReceiptParser {
         Long tendered;
         Long change;
         Long fallback;
-        /**
-         * Rentang nominal total yang digitnya terpotong OCR ("191,47" ->
-         * 191470..191479).
-         */
+
+        /** Rentang nominal total yang digitnya terpotong OCR ("191,47" -> 191470..191479). */
         Long partialLo;
+
         Long partialHi;
         long fee;
         long disc;
@@ -80,8 +72,7 @@ final class ReceiptParser {
                 case PAYMENT -> payment = v;
                 case TENDERED -> tendered = tendered == null ? v : Math.max(tendered, v);
                 case CHANGE -> change = v;
-                default -> {
-                }
+                default -> {}
             }
         }
     }
@@ -91,72 +82,91 @@ final class ReceiptParser {
     /** "total" toleran salah baca OCR: T0TAL, TOTAI, TOTA1, TOTA|. */
     private static final String TOTAL = "t[o0]t[a4][l1i|!]";
 
-    private static final Pattern TOTAL_WORD = Pattern.compile("(?<![a-z])" + TOTAL + "(?![a-z])", CI);
-    private static final Pattern SUBTOTAL = Pattern.compile("(?<![a-z])sub\\s*[-.]?\\s*" + TOTAL, CI);
-    private static final Pattern GRAND = Pattern.compile(
-            "grand\\s*"
-                    + TOTAL
-                    + "|(?<![a-z])"
-                    + TOTAL
-                    + "\\s*(bayar|pembayaran|tagihan|akhir|harus|amount|due)(?![a-z])"
-                    + "|(harus|jumlah)\\s*(di)?bayar|amount\\s*due",
-            CI);
-    private static final Pattern WEAK_WORD = Pattern.compile("(?<![a-z])(jumlah|net{1,2}o?|amount)(?![a-z])", CI);
-    /**
-     * Kata yang membuat baris "total" tetap sah walau memuat ppn/diskon: "Total
-     * (Incl. PPN)".
-     */
-    private static final Pattern QUALIFIED = Pattern.compile(
-            "(?<![a-z])(incl\\w*|inc|termasuk|setelah|sesudah|after|dgn|dengan)(?![a-z])",
-            CI);
-    private static final Pattern CHANGE = Pattern.compile("(?<![a-z])(k[eo][mn]?bali\\w*|change)(?![a-z])", CI);
-    private static final Pattern IGNORE = Pattern.compile("(?<![a-z])(saldo|balance|serah|voucher|poin)|hemat", CI);
-    private static final Pattern DISCOUNT = Pattern.compile("(?<![a-z])(diskon|discount|disc(?![a-z])|promo|potongan)",
-            CI);
-    private static final Pattern FEE = Pattern.compile(
-            "(?<![a-z])(pb1|pbl?i|pb2|ppn|pajak|service|servis|charge(?![a-z])|tax(?![a-z])|vat(?![a-z])|administrasi)",
-            CI);
-    private static final Pattern PAYMENT = Pattern.compile(
-            "(?<![a-z])(qris|[aou]ris|debit|credit|ovo|gopay|go-?pay|shopee?pay|dana|linkaja|e-?money|transfer)(?![a-z])",
-            CI);
-    private static final Pattern TENDERED = Pattern.compile(
-            "(?<![a-z])(tunai|tuna[l1!|]|tuna(?=[\\s:;=.,]*(?:rp)?[\\s\\d.,]+$)"
-                    + "|cash|uang|bayar|dibayar|paid|payment|pembayaran)(?![a-z])",
-            CI);
-    /**
-     * Nominal total yang digit terakhirnya hilang/terbaca simbol: "191,47",
-     * "191,4/5".
-     */
-    private static final Pattern PARTIAL = Pattern.compile("(?<![\\dA-Za-z])(\\d{1,3})[.,](\\d{1,2})(?![\\dA-Za-z%])");
-    private static final Pattern PAREN_TAX = Pattern.compile("\\([^)]*(ppn|pajak|tax|vat|pb1|pb2|service)[^)]*\\)", CI);
-    private static final Pattern SECTION_KEYWORD = Pattern.compile(
-            "(rincian|detail|keterangan|item|qty|telp|tlp|^hp|^no\\.?\\s*struk|fax|wc:|tunai\\b.*\\()",
-            CI);
-    private static final Pattern MERCHANT_SKIP = Pattern.compile(
-            "(?<![a-z])(total|jumlah|net{1,2}o?|amount|kembali|change|diskon|discount|promo|ppn|vat|tax|saldo|balance|serah)",
-            CI);
-    private static final Pattern CURRENCY_MARK = Pattern.compile("(?<![a-z])(rp|idr|rub)(?![a-z])", CI);
-    private static final Pattern TOKEN = Pattern.compile(
-            "(?<![\\dA-Za-z])(\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)(?![\\dA-Za-z%])");
-    private static final Pattern THOUSANDS = Pattern.compile("\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{1,2})?");
+    private static final Pattern TOTAL_WORD =
+            Pattern.compile("(?<![a-z])" + TOTAL + "(?![a-z])", CI);
+    private static final Pattern SUBTOTAL =
+            Pattern.compile("(?<![a-z])sub\\s*[-.]?\\s*" + TOTAL, CI);
+    private static final Pattern GRAND =
+            Pattern.compile(
+                    "grand\\s*"
+                            + TOTAL
+                            + "|(?<![a-z])"
+                            + TOTAL
+                            + "\\s*(bayar|pembayaran|tagihan|akhir|harus|amount|due)(?![a-z])"
+                            + "|(harus|jumlah)\\s*(di)?bayar|amount\\s*due",
+                    CI);
+    private static final Pattern WEAK_WORD =
+            Pattern.compile("(?<![a-z])(jumlah|net{1,2}o?|amount)(?![a-z])", CI);
+
+    /** Kata yang membuat baris "total" tetap sah walau memuat ppn/diskon: "Total (Incl. PPN)". */
+    private static final Pattern QUALIFIED =
+            Pattern.compile(
+                    "(?<![a-z])(incl\\w*|inc|termasuk|setelah|sesudah|after|dgn|dengan)(?![a-z])",
+                    CI);
+
+    private static final Pattern CHANGE =
+            Pattern.compile("(?<![a-z])(k[eo][mn]?bali\\w*|change)(?![a-z])", CI);
+    private static final Pattern IGNORE =
+            Pattern.compile("(?<![a-z])(saldo|balance|serah|voucher|poin)|hemat", CI);
+    private static final Pattern DISCOUNT =
+            Pattern.compile("(?<![a-z])(diskon|discount|disc(?![a-z])|promo|potongan)", CI);
+    private static final Pattern FEE =
+            Pattern.compile(
+                    "(?<![a-z])(pb1|pbl?i|pb2|ppn|pajak|service|servis|charge(?![a-z])|tax(?![a-z])|vat(?![a-z])|administrasi)",
+                    CI);
+    private static final Pattern PAYMENT =
+            Pattern.compile(
+                    "(?<![a-z])(qris|[aou]ris|debit|credit|ovo|gopay|go-?pay|shopee?pay|dana|linkaja|e-?money|transfer)(?![a-z])",
+                    CI);
+    private static final Pattern TENDERED =
+            Pattern.compile(
+                    "(?<![a-z])(tunai|tuna[l1!|]|tuna(?=[\\s:;=.,]*(?:rp)?[\\s\\d.,]+$)"
+                            + "|cash|uang|bayar|dibayar|paid|payment|pembayaran)(?![a-z])",
+                    CI);
+
+    /** Nominal total yang digit terakhirnya hilang/terbaca simbol: "191,47", "191,4/5". */
+    private static final Pattern PARTIAL =
+            Pattern.compile("(?<![\\dA-Za-z])(\\d{1,3})[.,](\\d{1,2})(?![\\dA-Za-z%])");
+
+    private static final Pattern PAREN_TAX =
+            Pattern.compile("\\([^)]*(ppn|pajak|tax|vat|pb1|pb2|service)[^)]*\\)", CI);
+    private static final Pattern SECTION_KEYWORD =
+            Pattern.compile(
+                    "(rincian|detail|keterangan|item|qty|telp|tlp|^hp|^no\\.?\\s*struk|fax|wc:|tunai\\b.*\\()",
+                    CI);
+    private static final Pattern MERCHANT_SKIP =
+            Pattern.compile(
+                    "(?<![a-z])(total|jumlah|net{1,2}o?|amount|kembali|change|diskon|discount|promo|ppn|vat|tax|saldo|balance|serah)",
+                    CI);
+    private static final Pattern CURRENCY_MARK =
+            Pattern.compile("(?<![a-z])(rp|idr|rub)(?![a-z])", CI);
+    private static final Pattern TOKEN =
+            Pattern.compile(
+                    "(?<![\\dA-Za-z])(\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)(?![\\dA-Za-z%])");
+    private static final Pattern THOUSANDS =
+            Pattern.compile("\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{1,2})?");
+
     /** Rangkaian angka yang huruf O-nya salah baca dari 0 ("5O.OOO"). */
-    private static final Pattern OCR_NUM = Pattern.compile("(?<![A-Za-z])[\\dOo][\\dOo.,]*[\\dOo](?![A-Za-z])");
+    private static final Pattern OCR_NUM =
+            Pattern.compile("(?<![A-Za-z])[\\dOo][\\dOo.,]*[\\dOo](?![A-Za-z])");
+
     private static final Pattern TIME = Pattern.compile("\\d{1,2}:\\d{2}");
     private static final Pattern ISO_DATE = Pattern.compile("(\\d{4})-(\\d{1,2})-(\\d{1,2})");
-    private static final Pattern NUM_DATE = Pattern.compile("(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})");
-    private static final Pattern NAME_DATE = Pattern.compile("(\\d{1,2})\\s+([A-Za-z]{3,9})\\.?\\s+(\\d{4})");
+    private static final Pattern NUM_DATE =
+            Pattern.compile("(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})");
+    private static final Pattern NAME_DATE =
+            Pattern.compile("(\\d{1,2})\\s+([A-Za-z]{3,9})\\.?\\s+(\\d{4})");
 
     private static final Map<String, Integer> MONTHS = months();
 
-    private ReceiptParser() {
-    }
+    private ReceiptParser() {}
 
     private static Map<String, Integer> months() {
         Map<String, Integer> map = new HashMap<>();
         String[][] names = {
-                { "jan", "january" }, { "feb", "february" }, { "mar", "march" }, { "apr", "april" },
-                { "mei", "may" }, { "jun", "june" }, { "jul", "july" }, { "agu", "august" },
-                { "sep", "september" }, { "okt", "october" }, { "nov", "november" }, { "des", "december" },
+            {"jan", "january"}, {"feb", "february"}, {"mar", "march"}, {"apr", "april"},
+            {"mei", "may"}, {"jun", "june"}, {"jul", "july"}, {"agu", "august"},
+            {"sep", "september"}, {"okt", "october"}, {"nov", "november"}, {"des", "december"},
         };
         for (int i = 0; i < names.length; i++) {
             for (String alias : names[i]) {
@@ -237,15 +247,16 @@ final class ReceiptParser {
                 }
             }
             boolean hasNumber = TOKEN.matcher(t).find();
-            boolean carryable = kind == Kind.GRAND
-                    || kind == Kind.STRICT
-                    || kind == Kind.SUBTOTAL
-                    || kind == Kind.PAYMENT
-                    || (!hasNumber
-                            && (kind == Kind.CHANGE
-                                    || kind == Kind.FEE
-                                    || kind == Kind.DISCOUNT
-                                    || kind == Kind.TENDERED));
+            boolean carryable =
+                    kind == Kind.GRAND
+                            || kind == Kind.STRICT
+                            || kind == Kind.SUBTOTAL
+                            || kind == Kind.PAYMENT
+                            || (!hasNumber
+                                    && (kind == Kind.CHANGE
+                                            || kind == Kind.FEE
+                                            || kind == Kind.DISCOUNT
+                                            || kind == Kind.TENDERED));
             if (carryable) {
                 pendingKind = kind;
                 pendingLeft = 3;
@@ -270,9 +281,10 @@ final class ReceiptParser {
 
         Long primary = acc.grand;
         if (primary == null && !acc.strict.isEmpty()) {
-            primary = expected != null && acc.strict.contains(expected)
-                    ? expected
-                    : acc.strict.get(acc.strict.size() - 1);
+            primary =
+                    expected != null && acc.strict.contains(expected)
+                            ? expected
+                            : acc.strict.get(acc.strict.size() - 1);
         }
         int base = 40;
         if (primary == null && acc.weak != null) {
@@ -291,10 +303,13 @@ final class ReceiptParser {
         if (primary == null && acc.partialLo != null) {
             int hits = 0;
             Long[] evidence = {
-                    expected, tenderedNet, acc.payment, taxDerived(acc, acc.partialLo, acc.partialHi)
+                expected, tenderedNet, acc.payment, taxDerived(acc, acc.partialLo, acc.partialHi)
             };
             for (Long c : evidence) {
-                if (c != null && c >= acc.partialLo && c <= acc.partialHi && !c.equals(partialPick)) {
+                if (c != null
+                        && c >= acc.partialLo
+                        && c <= acc.partialHi
+                        && !c.equals(partialPick)) {
                     partialPick = c;
                     hits++;
                 }
@@ -386,8 +401,8 @@ final class ReceiptParser {
     }
 
     /**
-     * Rapikan artefak OCR: "Rp55.000,-", "5O.OOO", "55. 000" menjadi "Rp 55.000",
-     * "50.000", "55.000".
+     * Rapikan artefak OCR: "Rp55.000,-", "5O.OOO", "55. 000" menjadi "Rp 55.000", "50.000",
+     * "55.000".
      */
     private static String normalize(String raw) {
         String s = raw.replaceAll("(?<=\\d)[.,]\\s*-+(?!\\d)", "");
@@ -398,7 +413,8 @@ final class ReceiptParser {
             String g = m.group();
             boolean hasDigit = g.chars().anyMatch(Character::isDigit);
             m.appendReplacement(
-                    sb, Matcher.quoteReplacement(hasDigit ? g.replace('O', '0').replace('o', '0') : g));
+                    sb,
+                    Matcher.quoteReplacement(hasDigit ? g.replace('O', '0').replace('o', '0') : g));
         }
         m.appendTail(sb);
         s = sb.toString();
@@ -444,9 +460,8 @@ final class ReceiptParser {
     }
 
     /**
-     * Nominal paling kanan di baris (nominal struk rata kanan). Angka kecil polos
-     * seperti jumlah item
-     * ("TOTAL 3 ITEM 55.000") dan persen ("PPN 10%") diabaikan.
+     * Nominal paling kanan di baris (nominal struk rata kanan). Angka kecil polos seperti jumlah
+     * item ("TOTAL 3 ITEM 55.000") dan persen ("PPN 10%") diabaikan.
      */
     private static Long lineValue(String t, boolean strongOnly) {
         boolean currency = CURRENCY_MARK.matcher(t).find();
@@ -466,9 +481,7 @@ final class ReceiptParser {
         return result;
     }
 
-    /**
-     * Baris tanpa huruf selain penanda mata uang: "Rp", ":", "55.000", "Rp 55.000".
-     */
+    /** Baris tanpa huruf selain penanda mata uang: "Rp", ":", "55.000", "Rp 55.000". */
     private static boolean valueOnly(String t) {
         return CURRENCY_MARK.matcher(t).replaceAll("").replaceAll("[^A-Za-z]", "").isEmpty();
     }
@@ -491,40 +504,42 @@ final class ReceiptParser {
     }
 
     /**
-     * Koreksi nominal total yang bertentangan dengan bukti lain: (1) dua bukti
-     * independen sepakat,
-     * atau (2) nominal pembayaran / tunai-kembalian hanya beda satu digit (salah
-     * baca OCR), atau
+     * Koreksi nominal total yang bertentangan dengan bukti lain: (1) dua bukti independen sepakat,
+     * atau (2) nominal pembayaran / tunai-kembalian hanya beda satu digit (salah baca OCR), atau
      * (3) tanpa bukti pembayaran, subtotal+pajak-diskon beda satu digit.
      */
     private static Long alternative(long primary, Long payment, Long tenderedNet, Long expected) {
-        for (Long a : new Long[] { payment, tenderedNet, expected }) {
-            if (a != null && a.longValue() != primary && count(a, payment, tenderedNet, expected) >= 2) {
+        for (Long a : new Long[] {payment, tenderedNet, expected}) {
+            if (a != null
+                    && a.longValue() != primary
+                    && count(a, payment, tenderedNet, expected) >= 2) {
                 return a;
             }
         }
-        for (Long a : new Long[] { payment, tenderedNet }) {
+        for (Long a : new Long[] {payment, tenderedNet}) {
             if (a != null && digitSimilar(primary, a)) {
                 return a;
             }
         }
-        if (payment == null && tenderedNet == null && expected != null && digitSimilar(primary, expected)) {
+        if (payment == null
+                && tenderedNet == null
+                && expected != null
+                && digitSimilar(primary, expected)) {
             return expected;
         }
         return null;
     }
 
-    private static final double[] TAX_RATES = { 0.05, 0.10, 0.11, 0.12, 0.15, 0.155, 0.1655 };
-    private static final double[] SINGLE_RATES = { 0.05, 0.10, 0.11, 0.12, 0.15 };
+    private static final double[] TAX_RATES = {0.05, 0.10, 0.11, 0.12, 0.15, 0.155, 0.1655};
+    private static final double[] SINGLE_RATES = {0.05, 0.10, 0.11, 0.12, 0.15};
 
     /** Pasangan digit yang lazim tertukar OCR. */
     private static final String[] CONFUSABLE = {
-            "39", "38", "08", "06", "09", "17", "56", "58", "68", "27", "49", "35", "69"
+        "39", "38", "08", "06", "09", "17", "56", "58", "68", "27", "49", "35", "69"
     };
 
     /**
-     * true bila beda tepat satu digit DAN pasangan digitnya lazim salah baca OCR
-     * (3↔9, 0↔8, ...).
+     * true bila beda tepat satu digit DAN pasangan digitnya lazim salah baca OCR (3↔9, 0↔8, ...).
      */
     private static boolean confusable(long a, long b) {
         if (!digitSimilar(a, b)) {
@@ -548,10 +563,7 @@ final class ReceiptParser {
         return false;
     }
 
-    /**
-     * subtotal + pajak, bila nominal pajak pas sebesar tarif baku x subtotal (tanpa
-     * diskon).
-     */
+    /** subtotal + pajak, bila nominal pajak pas sebesar tarif baku x subtotal (tanpa diskon). */
     private static Long rateValidated(Acc acc) {
         if (acc.subtotal == null || acc.fee < 100 || acc.disc != 0) {
             return null;
@@ -565,10 +577,8 @@ final class ReceiptParser {
     }
 
     /**
-     * Baris pajak tidak terbaca: bila tepat satu subtotal x (1 + tarif baku) hanya
-     * beda satu digit
-     * "lazim tertukar" dari nominal terbaca, pakai nominal itu. Ambigu atau sudah
-     * cocok -> null.
+     * Baris pajak tidak terbaca: bila tepat satu subtotal x (1 + tarif baku) hanya beda satu digit
+     * "lazim tertukar" dari nominal terbaca, pakai nominal itu. Ambigu atau sudah cocok -> null.
      */
     private static Long rateInferred(long primary, Long subtotal) {
         if (subtotal == null) {
@@ -591,10 +601,8 @@ final class ReceiptParser {
     }
 
     /**
-     * Subtotal tidak terbaca tapi nominal pajak ada: subtotal = pajak / tarif baku,
-     * total = subtotal
-     * + pajak. Hanya dipakai bila tepat satu tarif menghasilkan total di rentang
-     * [lo, hi].
+     * Subtotal tidak terbaca tapi nominal pajak ada: subtotal = pajak / tarif baku, total =
+     * subtotal + pajak. Hanya dipakai bila tepat satu tarif menghasilkan total di rentang [lo, hi].
      */
     private static Long taxDerived(Acc acc, long lo, long hi) {
         if (acc.fee < 100 || acc.disc != 0) {
@@ -618,8 +626,7 @@ final class ReceiptParser {
     }
 
     /**
-     * true bila kedua angka sama panjang dan berbeda tepat satu digit (misread OCR
-     * khas: 3↔9, 0↔8).
+     * true bila kedua angka sama panjang dan berbeda tepat satu digit (misread OCR khas: 3↔9, 0↔8).
      */
     private static boolean digitSimilar(long a, long b) {
         String x = Long.toString(a);
@@ -636,10 +643,7 @@ final class ReceiptParser {
         return diff == 1;
     }
 
-    /**
-     * "1.234.567" → 1234567; "45.000,50" → 45000; "1,234.56" (en) → 1235; "45000" →
-     * 45000.
-     */
+    /** "1.234.567" → 1234567; "45.000,50" → 45000; "1,234.56" (en) → 1235; "45000" → 45000. */
     private static Long toRupiah(String token) {
         long value;
         try {
@@ -668,10 +672,11 @@ final class ReceiptParser {
         for (String line : lines) {
             Matcher iso = ISO_DATE.matcher(line);
             if (iso.find()) {
-                LocalDate parsed = safeDate(
-                        parseInt(iso.group(1)),
-                        parseInt(iso.group(2)),
-                        parseInt(iso.group(3)));
+                LocalDate parsed =
+                        safeDate(
+                                parseInt(iso.group(1)),
+                                parseInt(iso.group(2)),
+                                parseInt(iso.group(3)));
                 if (valid(parsed, today)) {
                     return parsed;
                 }
@@ -699,7 +704,8 @@ final class ReceiptParser {
             if (name.find()) {
                 Integer month = MONTHS.get(name.group(2).toLowerCase());
                 if (month != null) {
-                    LocalDate parsed = safeDate(parseInt(name.group(3)), month, parseInt(name.group(1)));
+                    LocalDate parsed =
+                            safeDate(parseInt(name.group(3)), month, parseInt(name.group(1)));
                     if (valid(parsed, today)) {
                         return parsed;
                     }

@@ -40,6 +40,7 @@ com\fastwork\expense\summary\SummaryService$SubtotalRow.class
 com\fastwork\expense\receipt\ReceiptScanService.class
 com\fastwork\expense\budget\BudgetResponse.class
 com\fastwork\expense\closing\ClosingExport.class
+com\fastwork\expense\config\SecurityConfig$SpaCsrfTokenRequestHandler.class
 com\fastwork\expense\receipt\ReceiptImagePreprocessor.class
 com\fastwork\expense\user\UserController.class
 com\fastwork\expense\closing\ClosingExcelWriter.class

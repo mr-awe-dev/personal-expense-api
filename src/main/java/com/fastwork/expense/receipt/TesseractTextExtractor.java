@@ -27,19 +27,21 @@ public class TesseractTextExtractor implements TextExtractor {
 
     @Override
     public String extract(Path imageFile) {
-        List<String> command = List.of(
-                props.getBinary(),
-                imageFile.toString(),
-                "stdout",
-                "-l",
-                props.getLanguages(),
-                "--psm",
-                props.getPsm());
+        List<String> command =
+                List.of(
+                        props.getBinary(),
+                        imageFile.toString(),
+                        "stdout",
+                        "-l",
+                        props.getLanguages(),
+                        "--psm",
+                        props.getPsm());
         Process process = null;
         try {
             process = new ProcessBuilder(command).start();
             final Process proc = process;
-            CompletableFuture<byte[]> errFuture = CompletableFuture.supplyAsync(() -> readAll(proc.getErrorStream()));
+            CompletableFuture<byte[]> errFuture =
+                    CompletableFuture.supplyAsync(() -> readAll(proc.getErrorStream()));
             byte[] out = readAll(process.getInputStream());
             byte[] err = errFuture.join();
             boolean finished = process.waitFor(props.getTimeoutSeconds(), TimeUnit.SECONDS);
