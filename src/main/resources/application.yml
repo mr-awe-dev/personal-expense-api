@@ -106,7 +106,7 @@ app:
   # Passkey (WebAuthn) fitur opt-in: aktifkan dengan env WEBAUTHN_* (lihat .agent/configuration.md).
   # Jika aktif, fail-fast menuntut rp-id + allowed-origins terisi (validasi saat startup).
   webauthn:
-    enabled: ${WEBAUTHN_ENABLED:false}
+    enabled: ${WEBAUTHN_ENABLED:true}
     rp-id: ${WEBAUTHN_RP_ID:}
     rp-name: ${WEBAUTHN_RP_NAME:Personal Expense}
     allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:}
