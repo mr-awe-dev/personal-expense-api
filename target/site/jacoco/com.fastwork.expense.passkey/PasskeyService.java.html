@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PasskeyService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.passkey</a> &gt; <span class="el_source">PasskeyService.java</span></div><h1>PasskeyService.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.passkey;
+
+import static com.fastwork.expense.passkey.PasskeyCredentialRepository.uuidToBytes;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import org.slf4j.MDC;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fastwork.expense.auth.LoginRateLimiter;
+import com.fastwork.expense.auth.LoginResponse;
+import com.fastwork.expense.common.ApiException;
+import com.fastwork.expense.common.UuidV7;
+import com.fastwork.expense.user.MeResponse;
+import com.fastwork.expense.user.PetPrincipal;
+import com.fastwork.expense.user.User;
+import com.fastwork.expense.user.UserRepository;
+import com.yubico.webauthn.AssertionRequest;
+import com.yubico.webauthn.AssertionResult;
+import com.yubico.webauthn.FinishAssertionOptions;
+import com.yubico.webauthn.FinishRegistrationOptions;
+import com.yubico.webauthn.RegistrationResult;
+import com.yubico.webauthn.RelyingParty;
+import com.yubico.webauthn.StartAssertionOptions;
+import com.yubico.webauthn.StartRegistrationOptions;
+import com.yubico.webauthn.data.AuthenticatorAttestationResponse;
+import com.yubico.webauthn.data.AuthenticatorAssertionResponse;
+import com.yubico.webauthn.data.AuthenticatorSelectionCriteria;
+import com.yubico.webauthn.data.ClientAssertionExtensionOutputs;
+import com.yubico.webauthn.data.ClientRegistrationExtensionOutputs;
+import com.yubico.webauthn.data.PublicKeyCredential;
+import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
+import com.yubico.webauthn.data.ResidentKeyRequirement;
+import com.yubico.webauthn.data.UserIdentity;
+import com.yubico.webauthn.data.UserVerificationRequirement;
+import com.yubico.webauthn.exception.AssertionFailedException;
+import com.yubico.webauthn.exception.RegistrationFailedException;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Sesi WebAuthn: pendaftaran passkey (dalam sesi login, kartu Pengaturan) dan
+ * login sekali-tap tanpa email (resident key). Challenge/opsi disimpan sebagai
+ * atribut HTTP session (Spring Session JDBC) agar aman restart dan tidak bisa
+ * dimanipulasi klien. Setelah login sukses, sesi anonim diputar id-nya
+ * (tandingan proteksi session fixation) lalu diisi SecurityContext pengguna.
+ */
+@Service
+@RequiredArgsConstructor
+<span class="fc" id="L66">@Slf4j</span>
+public class PasskeyService {
+
+    private static final String SESSION_KEY_REGISTRATION = &quot;PASSKEY_REGISTRATION_OPTIONS&quot;;
+    private static final String SESSION_KEY_ASSERTION = &quot;PASSKEY_ASSERTION_REQUEST&quot;;
+
+<span class="fc" id="L72">    private static final Marker AUTH_MARKER = MarkerFactory.getMarker(&quot;AUTH&quot;);</span>
+<span class="fc" id="L73">    private static final Marker LOGIN_SUCCESS_MARKER = MarkerFactory.getMarker(&quot;LOGIN_SUCCESS&quot;);</span>
+<span class="fc" id="L74">    private static final Marker LOGIN_FAILURE_MARKER = MarkerFactory.getMarker(&quot;LOGIN_FAILURE&quot;);</span>
+
+    private final WebAuthnServer webAuthnServer;
+    private final WebAuthnProperties properties;
+    private final PasskeyRepository passkeys;
+    private final UserRepository users;
+    private final SecurityContextRepository securityContextRepository;
+    private final LoginRateLimiter rateLimiter;
+
+    // ---------- Pendaftaran (pengguna sudah masuk) ----------
+
+    public String createRegistrationOptions(User user, HttpServletRequest request)
+            throws com.fasterxml.jackson.core.JsonProcessingException {
+<span class="fc" id="L87">        requireEnabled();</span>
+<span class="fc" id="L88">        RelyingParty party = webAuthnServer.get();</span>
+<span class="fc" id="L89">        PublicKeyCredentialCreationOptions options =</span>
+<span class="fc" id="L90">                party.startRegistration(</span>
+<span class="fc" id="L91">                        StartRegistrationOptions.builder()</span>
+<span class="fc" id="L92">                                .user(UserIdentity.builder()</span>
+<span class="fc" id="L93">                                        .name(user.getEmail())</span>
+<span class="fc" id="L94">                                        .displayName(displayNameOf(user))</span>
+<span class="fc" id="L95">                                        .id(uuidToBytes(user.getId()))</span>
+<span class="fc" id="L96">                                        .build())</span>
+                                // Resident key = passkey: dipakai login tanpa perlu email.
+<span class="fc" id="L98">                                .authenticatorSelection(AuthenticatorSelectionCriteria.builder()</span>
+<span class="fc" id="L99">                                        .residentKey(ResidentKeyRequirement.REQUIRED)</span>
+<span class="fc" id="L100">                                        .userVerification(UserVerificationRequirement.PREFERRED)</span>
+<span class="fc" id="L101">                                        .build())</span>
+<span class="fc" id="L102">                                .build());</span>
+<span class="fc" id="L103">        request.getSession(true).setAttribute(SESSION_KEY_REGISTRATION, options.toJson());</span>
+<span class="fc" id="L104">        log.info(</span>
+<span class="fc" id="L105">                AUTH_MARKER,</span>
+<span class="fc" id="L106">                &quot;Passkey registration started: userId={}, email={}&quot;,</span>
+<span class="fc" id="L107">                user.getId(),</span>
+<span class="fc" id="L108">                maskEmail(user.getEmail()));</span>
+<span class="fc" id="L109">        return options.toCredentialsCreateJson();</span>
+    }
+
+    @Transactional
+    public PasskeyDto completeRegistration(User user, String body, HttpServletRequest request) {
+<span class="fc" id="L114">        requireEnabled();</span>
+<span class="fc" id="L115">        HttpSession session = request.getSession(false);</span>
+<span class="fc" id="L116">        String storedOptions =</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">                session == null ? null : (String) session.getAttribute(SESSION_KEY_REGISTRATION);</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">        if (storedOptions == null) {</span>
+<span class="fc" id="L119">            throw ApiException.badRequest(&quot;PASSKEY_INCOMPLETE&quot;, &quot;Pendaftaran passkey belum dimulai&quot;);</span>
+        }
+        PublicKeyCredential&lt;AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs&gt;
+<span class="fc" id="L122">                credential = parseRegistrationResponse(body);</span>
+<span class="fc" id="L123">        RelyingParty party = webAuthnServer.get();</span>
+
+        RegistrationResult result;
+        try {
+<span class="fc" id="L127">            result =</span>
+<span class="fc" id="L128">                    party.finishRegistration(</span>
+<span class="fc" id="L129">                            FinishRegistrationOptions.builder()</span>
+<span class="fc" id="L130">                                    .request(</span>
+<span class="fc" id="L131">                                            parseStoredRegistrationOptions(storedOptions))</span>
+<span class="fc" id="L132">                                    .response(credential)</span>
+<span class="fc" id="L133">                                    .build());</span>
+<span class="fc" id="L134">        } catch (RegistrationFailedException ex) {</span>
+<span class="fc" id="L135">            log.warn(</span>
+<span class="fc" id="L136">                    LOGIN_FAILURE_MARKER,</span>
+<span class="fc" id="L137">                    &quot;Passkey registration failed: userId={}, reason={}&quot;,</span>
+<span class="fc" id="L138">                    user.getId(),</span>
+<span class="fc" id="L139">                    ex.getMessage());</span>
+<span class="fc" id="L140">            throw ApiException.badRequest(&quot;PASSKEY_VERIFY_FAILED&quot;, &quot;Verifikasi passkey gagal&quot;);</span>
+        }
+
+<span class="fc" id="L143">        session.removeAttribute(SESSION_KEY_REGISTRATION);</span>
+<span class="fc" id="L144">        byte[] credentialIdBytes = result.getKeyId().getId().getBytes();</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">        if (passkeys.findByCredentialId(credentialIdBytes).isPresent()) {</span>
+<span class="fc" id="L146">            throw ApiException.conflict(&quot;Passkey sudah terdaftar&quot;);</span>
+        }
+<span class="fc" id="L148">        Passkey row =</span>
+<span class="fc" id="L149">                new Passkey(</span>
+<span class="fc" id="L150">                        UuidV7.random(),</span>
+<span class="fc" id="L151">                        user.getId(),</span>
+<span class="fc" id="L152">                        credentialIdBytes,</span>
+<span class="fc" id="L153">                        result.getPublicKeyCose().getBytes());</span>
+<span class="fc" id="L154">        row.setAlg(PasskeyCredentialRepository.algFromCose(result.getPublicKeyCose().getBytes()));</span>
+<span class="fc" id="L155">        row.setSignatureCount(result.getSignatureCount());</span>
+<span class="fc" id="L156">        row.setBackupEligible(result.isBackupEligible());</span>
+<span class="fc" id="L157">        row.setBackupState(result.isBackedUp());</span>
+<span class="fc" id="L158">        row.setDiscoverable(result.isDiscoverable().orElse(true));</span>
+<span class="fc" id="L159">        row.setTransports(</span>
+<span class="fc" id="L160">                PasskeyCredentialRepository.transportsToString(</span>
+<span class="fc" id="L161">                        credential.getResponse().getTransports()));</span>
+<span class="fc" id="L162">        passkeys.save(row);</span>
+<span class="fc" id="L163">        log.info(</span>
+<span class="fc" id="L164">                AUTH_MARKER,</span>
+<span class="fc" id="L165">                &quot;Passkey registered: userId={}, discoverable={}, backupEligible={}&quot;,</span>
+<span class="fc" id="L166">                user.getId(),</span>
+<span class="fc" id="L167">                row.getDiscoverable(),</span>
+<span class="fc" id="L168">                row.getBackupEligible());</span>
+<span class="fc" id="L169">        return PasskeyDto.from(row, FALLBACK_LABEL);</span>
+    }
+
+    // ---------- Daftar &amp; hapus ----------
+
+    @Transactional(readOnly = true)
+    public List&lt;PasskeyDto&gt; list(UUID userId) {
+<span class="fc" id="L176">        requireEnabled();</span>
+<span class="fc" id="L177">        List&lt;PasskeyDto&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L178" title="All 2 branches covered.">        for (Passkey row : passkeys.findByUserIdOrderByCreatedAtAsc(userId)) {</span>
+<span class="fc" id="L179">            result.add(PasskeyDto.from(row, FALLBACK_LABEL));</span>
+        }
+<span class="fc" id="L181">        return result;</span>
+    }
+
+    public void delete(UUID userId, UUID passkeyId) {
+<span class="fc" id="L185">        requireEnabled();</span>
+<span class="fc" id="L186">        Passkey row =</span>
+<span class="fc" id="L187">                passkeys</span>
+<span class="fc" id="L188">                        .findByIdAndUserId(passkeyId, userId)</span>
+<span class="fc" id="L189">                        .orElseThrow(() -&gt; ApiException.notFound(&quot;Passkey tidak ditemukan&quot;));</span>
+<span class="fc" id="L190">        passkeys.delete(row);</span>
+<span class="fc" id="L191">        log.info(AUTH_MARKER, &quot;Passkey deleted: userId={}, passkeyId={}&quot;, userId, passkeyId);</span>
+<span class="fc" id="L192">    }</span>
+
+    // ---------- Login sekali-tap (tanpa email, anonim) ----------
+
+    public String createLoginOptions(HttpServletRequest request)
+            throws com.fasterxml.jackson.core.JsonProcessingException {
+<span class="fc" id="L198">        requireEnabled();</span>
+<span class="fc" id="L199">        RelyingParty party = webAuthnServer.get();</span>
+<span class="fc" id="L200">        AssertionRequest assertion =</span>
+<span class="fc" id="L201">                party.startAssertion(StartAssertionOptions.builder().build());</span>
+<span class="fc" id="L202">        request.getSession(true).setAttribute(SESSION_KEY_ASSERTION, assertion.toJson());</span>
+<span class="fc" id="L203">        return assertion.toCredentialsGetJson();</span>
+    }
+
+    @Transactional
+    public LoginResponse login(
+            String body, HttpServletRequest request, HttpServletResponse response) {
+<span class="fc" id="L209">        requireEnabled();</span>
+<span class="fc" id="L210">        String ip = resolveClientIp(request);</span>
+<span class="fc" id="L211">        log.info(AUTH_MARKER, &quot;Passkey login attempt: ip={}&quot;, ip);</span>
+<span class="fc" id="L212">        rateLimiter.assertAttemptAllowed(ip, null, &quot;passkey-login&quot;);</span>
+
+<span class="fc" id="L214">        HttpSession session = request.getSession(false);</span>
+<span class="fc" id="L215">        String storedRequest =</span>
+<span class="fc bfc" id="L216" title="All 2 branches covered.">                session == null ? null : (String) session.getAttribute(SESSION_KEY_ASSERTION);</span>
+<span class="fc bfc" id="L217" title="All 2 branches covered.">        if (storedRequest == null) {</span>
+<span class="fc" id="L218">            throw ApiException.badRequest(&quot;PASSKEY_INCOMPLETE&quot;, &quot;Login passkey belum dimulai&quot;);</span>
+        }
+<span class="fc" id="L220">        AssertionRequest assertionRequest = parseStoredAssertionRequest(storedRequest);</span>
+        PublicKeyCredential&lt;AuthenticatorAssertionResponse, ClientAssertionExtensionOutputs&gt;
+<span class="fc" id="L222">                credential = parseAssertionResponse(body);</span>
+
+        AssertionResult result;
+        try {
+<span class="fc" id="L226">            result =</span>
+<span class="fc" id="L227">                    webAuthnServer</span>
+<span class="fc" id="L228">                            .get()</span>
+<span class="fc" id="L229">                            .finishAssertion(</span>
+<span class="fc" id="L230">                                    FinishAssertionOptions.builder()</span>
+<span class="fc" id="L231">                                            .request(assertionRequest)</span>
+<span class="fc" id="L232">                                            .response(credential)</span>
+<span class="fc" id="L233">                                            .build());</span>
+<span class="fc" id="L234">        } catch (AssertionFailedException ex) {</span>
+<span class="fc" id="L235">            log.warn(</span>
+<span class="fc" id="L236">                    LOGIN_FAILURE_MARKER,</span>
+<span class="fc" id="L237">                    &quot;Passkey login failed (signature invalid): reason={}&quot;,</span>
+<span class="fc" id="L238">                    ex.getMessage());</span>
+<span class="fc" id="L239">            throw ApiException.unauthorized(&quot;Verifikasi passkey gagal&quot;);</span>
+        }
+<span class="fc bfc" id="L241" title="All 2 branches covered.">        if (!result.isSuccess()) {</span>
+<span class="fc" id="L242">            log.warn(LOGIN_FAILURE_MARKER, &quot;Passkey login failed (assertion rejected)&quot;);</span>
+<span class="fc" id="L243">            throw ApiException.unauthorized(&quot;Verifikasi passkey gagal&quot;);</span>
+        }
+
+<span class="fc" id="L246">        User user =</span>
+<span class="fc" id="L247">                users</span>
+<span class="fc" id="L248">                        .findByEmail(usernameOf(result))</span>
+<span class="fc" id="L249">                        .filter(User::isActive)</span>
+<span class="fc" id="L250">                        .orElse(null);</span>
+<span class="fc bfc" id="L251" title="All 2 branches covered.">        if (user == null) {</span>
+<span class="fc" id="L252">            log.warn(</span>
+<span class="fc" id="L253">                    LOGIN_FAILURE_MARKER,</span>
+<span class="fc" id="L254">                    &quot;Passkey login failed (user unknown/inactive): owner={}&quot;,</span>
+<span class="fc" id="L255">                    maskEmail(usernameOf(result)));</span>
+<span class="fc" id="L256">            throw ApiException.unauthorized(&quot;Passkey tidak dapat dipakai untuk masuk&quot;);</span>
+        }
+
+        // Baris wajib ada: pemilik kredensial sudah lolos lookup di repositori.
+<span class="fc" id="L260">        Passkey row =</span>
+<span class="fc" id="L261">                passkeys</span>
+<span class="fc" id="L262">                        .findByCredentialId(result.getCredentialId().getBytes())</span>
+<span class="fc" id="L263">                        .orElse(null);</span>
+<span class="pc bpc" id="L264" title="1 of 2 branches missed.">        if (row != null) {</span>
+<span class="fc" id="L265">            row.setSignatureCount(result.getSignatureCount());</span>
+<span class="fc" id="L266">            row.setBackupState(result.isBackedUp());</span>
+<span class="fc" id="L267">            row.setLastUsedAt(Instant.now());</span>
+<span class="fc" id="L268">            passkeys.save(row);</span>
+        }
+<span class="fc" id="L270">        rateLimiter.recordSuccess(result.getUsername(), &quot;passkey-login&quot;);</span>
+
+        // Sesi anonim pembawa challenge tidak boleh dibawa ke sesi terautentikasi.
+<span class="fc" id="L273">        session.removeAttribute(SESSION_KEY_ASSERTION);</span>
+<span class="fc" id="L274">        request.changeSessionId();</span>
+
+<span class="fc" id="L276">        establishSession(user, request, response);</span>
+<span class="fc" id="L277">        MDC.put(&quot;userId&quot;, String.valueOf(user.getId()));</span>
+
+<span class="fc" id="L279">        log.info(</span>
+<span class="fc" id="L280">                LOGIN_SUCCESS_MARKER,</span>
+<span class="fc" id="L281">                &quot;Login successful via passkey: userId={}, email={}, ip={}, sessionId={}&quot;,</span>
+<span class="fc" id="L282">                user.getId(),</span>
+<span class="fc" id="L283">                maskEmail(user.getEmail()),</span>
+<span class="fc" id="L284">                ip,</span>
+<span class="fc" id="L285">                request.getSession(false).getId());</span>
+
+<span class="fc" id="L287">        return new LoginResponse(MeResponse.from(user));</span>
+    }
+
+    // ---------- Helper ----------
+
+    private void establishSession(
+            User user, HttpServletRequest request, HttpServletResponse response) {
+<span class="fc" id="L294">        PetPrincipal principal = new PetPrincipal(user);</span>
+<span class="fc" id="L295">        SecurityContext context = SecurityContextHolder.createEmptyContext();</span>
+<span class="fc" id="L296">        context.setAuthentication(</span>
+<span class="fc" id="L297">                UsernamePasswordAuthenticationToken.authenticated(</span>
+<span class="fc" id="L298">                        principal, null, principal.getAuthorities()));</span>
+<span class="fc" id="L299">        SecurityContextHolder.setContext(context);</span>
+<span class="fc" id="L300">        request.getSession(true);</span>
+<span class="fc" id="L301">        securityContextRepository.saveContext(context, request, response);</span>
+<span class="fc" id="L302">    }</span>
+
+    private void requireEnabled() {
+<span class="fc bfc" id="L305" title="All 2 branches covered.">        if (!properties.isEnabled()) {</span>
+<span class="fc" id="L306">            throw ApiException.notFound(&quot;Fitur passkey tidak aktif&quot;);</span>
+        }
+<span class="fc" id="L308">    }</span>
+
+    private static String usernameOf(AssertionResult result) {
+<span class="fc" id="L311">        String username = result.getUsername();</span>
+<span class="fc bfc" id="L312" title="All 2 branches covered.">        return username == null ? &quot;&quot; : username.trim();</span>
+    }
+
+    private static String displayNameOf(User user) {
+<span class="fc bfc" id="L316" title="All 4 branches covered.">        if (user.getDisplayName() == null || user.getDisplayName().isBlank()) {</span>
+<span class="fc" id="L317">            return user.getEmail();</span>
+        }
+<span class="fc" id="L319">        return user.getDisplayName();</span>
+    }
+
+<span class="fc" id="L322">    private static final String FALLBACK_LABEL = &quot;Perangkat ini&quot;;</span>
+
+    private PublicKeyCredentialCreationOptions parseStoredRegistrationOptions(String json) {
+        try {
+<span class="fc" id="L326">            return PublicKeyCredentialCreationOptions.fromJson(json);</span>
+<span class="fc" id="L327">        } catch (com.fasterxml.jackson.core.JacksonException ex) {</span>
+<span class="fc" id="L328">            log.warn(&quot;Opsi pendaftaran tersimpan tidak bisa dibaca: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L329">            throw ApiException.badRequest(&quot;PASSKEY_INCOMPLETE&quot;, &quot;Pendaftaran passkey belum dimulai&quot;);</span>
+        }
+    }
+
+    private AssertionRequest parseStoredAssertionRequest(String json) {
+        try {
+<span class="fc" id="L335">            return AssertionRequest.fromJson(json);</span>
+<span class="fc" id="L336">        } catch (com.fasterxml.jackson.core.JacksonException ex) {</span>
+<span class="fc" id="L337">            log.warn(&quot;Permintaan assertion tersimpan tidak bisa dibaca: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L338">            throw ApiException.badRequest(&quot;PASSKEY_INCOMPLETE&quot;, &quot;Login passkey belum dimulai&quot;);</span>
+        }
+    }
+
+    private PublicKeyCredential&lt;
+                    AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs&gt;
+            parseRegistrationResponse(String body) {
+        try {
+<span class="fc" id="L346">            return PublicKeyCredential.parseRegistrationResponseJson(body);</span>
+<span class="fc" id="L347">        } catch (IOException | IllegalArgumentException ex) {</span>
+<span class="fc" id="L348">            log.warn(&quot;Body registrasi passkey tidak valid: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L349">            throw ApiException.badRequest(&quot;PASSKEY_INVALID&quot;, &quot;Data passkey tidak valid&quot;);</span>
+        }
+    }
+
+    private PublicKeyCredential&lt;
+                    AuthenticatorAssertionResponse, ClientAssertionExtensionOutputs&gt;
+            parseAssertionResponse(String body) {
+        try {
+<span class="fc" id="L357">            return PublicKeyCredential.parseAssertionResponseJson(body);</span>
+<span class="fc" id="L358">        } catch (IOException | IllegalArgumentException ex) {</span>
+<span class="fc" id="L359">            log.warn(&quot;Body assertion passkey tidak valid: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L360">            throw ApiException.badRequest(&quot;PASSKEY_INVALID&quot;, &quot;Data passkey tidak valid&quot;);</span>
+        }
+    }
+
+    /**
+     * IP asli klien di belakang Caddy/Function Cloudflare; pola sama dengan
+     * {@code AuthService.resolveClientIp}.
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+<span class="fc" id="L369">        String forwarded = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="fc bfc" id="L370" title="All 4 branches covered.">        if (forwarded != null &amp;&amp; !forwarded.isEmpty()) {</span>
+<span class="fc" id="L371">            return forwarded.split(&quot;,&quot;)[0].trim();</span>
+        }
+<span class="fc" id="L373">        String realIp = request.getHeader(&quot;X-Real-IP&quot;);</span>
+<span class="fc bfc" id="L374" title="All 4 branches covered.">        if (realIp != null &amp;&amp; !realIp.isEmpty()) {</span>
+<span class="fc" id="L375">            return realIp;</span>
+        }
+<span class="fc" id="L377">        return request.getRemoteAddr();</span>
+    }
+
+    static String maskEmail(String email) {
+<span class="fc bfc" id="L381" title="All 4 branches covered.">        if (email == null || !email.contains(&quot;@&quot;)) {</span>
+<span class="fc" id="L382">            return &quot;***&quot;;</span>
+        }
+<span class="fc" id="L384">        int at = email.indexOf(&quot;@&quot;);</span>
+<span class="fc bfc" id="L385" title="All 2 branches covered.">        if (at &lt;= 1) {</span>
+<span class="fc" id="L386">            return &quot;***&quot; + email.substring(at);</span>
+        }
+<span class="fc" id="L388">        return email.charAt(0) + &quot;***&quot; + email.substring(at);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

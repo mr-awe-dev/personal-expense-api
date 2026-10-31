@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Passkey.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.passkey</a> &gt; <span class="el_source">Passkey.java</span></div><h1>Passkey.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.passkey;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+/**
+ * Robo passkey (WebAuthn). Satu baris per kredensial biometrik per perangkat.
+ * Menyimpan data minimal yang dibutuhkan RelyingParty Yubico untuk verifikasi
+ * assertion: kunci publik COSE, alg, jumlah tanda tangan, dan flag backup.
+ */
+@Entity
+@Table(name = &quot;passkeys&quot;)
+public class Passkey {
+
+    @Id private UUID id;
+
+    @Column(name = &quot;user_id&quot;, nullable = false)
+    private UUID userId;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(nullable = false, unique = true, columnDefinition = &quot;bytea&quot;)
+    private byte[] credentialId;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = &quot;public_key&quot;, nullable = false, columnDefinition = &quot;bytea&quot;)
+    private byte[] publicKeyCose;
+
+    @Column(nullable = false)
+    private Integer alg;
+
+<span class="fc" id="L40">    @Column(nullable = false)</span>
+    private String transports = &quot;&quot;;
+
+<span class="fc" id="L43">    @Column(name = &quot;signature_count&quot;, nullable = false)</span>
+<span class="fc" id="L44">    private Long signatureCount = 0L;</span>
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(columnDefinition = &quot;bytea&quot;)
+    private byte[] uvi;
+
+<span class="fc" id="L50">    @Column(name = &quot;backup_eligible&quot;, nullable = false)</span>
+<span class="fc" id="L51">    private Boolean backupEligible = false;</span>
+
+<span class="fc" id="L53">    @Column(name = &quot;backup_state&quot;, nullable = false)</span>
+<span class="fc" id="L54">    private Boolean backupState = false;</span>
+
+<span class="fc" id="L56">    @Column(nullable = false)</span>
+<span class="fc" id="L57">    private Boolean discoverable = true;</span>
+
+<span class="fc" id="L59">    @Column(nullable = false)</span>
+    private String label = &quot;&quot;;
+
+    @Column(name = &quot;last_used_at&quot;)
+    private Instant lastUsedAt;
+
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private Instant createdAt;
+
+<span class="fc" id="L69">    protected Passkey() {}</span>
+
+<span class="fc" id="L71">    public Passkey(UUID id, UUID userId, byte[] credentialId, byte[] publicKeyCose) {</span>
+<span class="fc" id="L72">        this.id = id;</span>
+<span class="fc" id="L73">        this.userId = userId;</span>
+<span class="fc" id="L74">        this.credentialId = credentialId.clone();</span>
+<span class="fc" id="L75">        this.publicKeyCose = publicKeyCose.clone();</span>
+<span class="fc" id="L76">    }</span>
+
+    public UUID getId() {
+<span class="fc" id="L79">        return id;</span>
+    }
+
+    public UUID getUserId() {
+<span class="fc" id="L83">        return userId;</span>
+    }
+
+    public byte[] getCredentialId() {
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        return credentialId == null ? null : credentialId.clone();</span>
+    }
+
+    public byte[] getPublicKeyCose() {
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        return publicKeyCose == null ? null : publicKeyCose.clone();</span>
+    }
+
+    public Integer getAlg() {
+<span class="fc" id="L95">        return alg;</span>
+    }
+
+    public void setAlg(Integer alg) {
+<span class="fc" id="L99">        this.alg = alg;</span>
+<span class="fc" id="L100">    }</span>
+
+    public String getTransports() {
+<span class="fc" id="L103">        return transports;</span>
+    }
+
+    public void setTransports(String transports) {
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        this.transports = transports == null ? &quot;&quot; : transports;</span>
+<span class="fc" id="L108">    }</span>
+
+    public Long getSignatureCount() {
+<span class="fc" id="L111">        return signatureCount;</span>
+    }
+
+    public void setSignatureCount(Long signatureCount) {
+<span class="fc" id="L115">        this.signatureCount = signatureCount;</span>
+<span class="fc" id="L116">    }</span>
+
+    public byte[] getUvi() {
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        return uvi == null ? null : uvi.clone();</span>
+    }
+
+    public void setUvi(byte[] uvi) {
+<span class="fc" id="L123">        this.uvi = uvi;</span>
+<span class="fc" id="L124">    }</span>
+
+    public Boolean getBackupEligible() {
+<span class="fc" id="L127">        return backupEligible;</span>
+    }
+
+    public void setBackupEligible(Boolean backupEligible) {
+<span class="fc" id="L131">        this.backupEligible = backupEligible;</span>
+<span class="fc" id="L132">    }</span>
+
+    public Boolean getBackupState() {
+<span class="fc" id="L135">        return backupState;</span>
+    }
+
+    public void setBackupState(Boolean backupState) {
+<span class="fc" id="L139">        this.backupState = backupState;</span>
+<span class="fc" id="L140">    }</span>
+
+    public Boolean getDiscoverable() {
+<span class="fc" id="L143">        return discoverable;</span>
+    }
+
+    public void setDiscoverable(Boolean discoverable) {
+<span class="fc" id="L147">        this.discoverable = discoverable;</span>
+<span class="fc" id="L148">    }</span>
+
+    public String getLabel() {
+<span class="fc" id="L151">        return label;</span>
+    }
+
+    public void setLabel(String label) {
+<span class="fc bfc" id="L155" title="All 2 branches covered.">        this.label = label == null ? &quot;&quot; : label;</span>
+<span class="fc" id="L156">    }</span>
+
+    public Instant getLastUsedAt() {
+<span class="fc" id="L159">        return lastUsedAt;</span>
+    }
+
+    public void setLastUsedAt(Instant lastUsedAt) {
+<span class="fc" id="L163">        this.lastUsedAt = lastUsedAt;</span>
+<span class="fc" id="L164">    }</span>
+
+    public Instant getCreatedAt() {
+<span class="fc" id="L167">        return createdAt;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

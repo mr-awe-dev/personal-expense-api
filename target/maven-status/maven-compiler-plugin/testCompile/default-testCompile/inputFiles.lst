@@ -32,6 +32,12 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\RequestContextIntegrationTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\RequestCorrelationFilterTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\UserContextMdcFilterTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\FakeAuthenticator.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyCredentialRepositoryTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyFlowTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyServiceTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\WebAuthnServerTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\PostgresIntegrationTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\ReceiptImagePreprocessorTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\ReceiptParserBranchTest.java

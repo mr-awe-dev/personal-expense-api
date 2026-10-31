@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.fastwork.expense.observability.ObservabilityUnitTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.303 s -- in com.fastwork.expense.observability.ObservabilityUnitTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.270 s -- in com.fastwork.expense.observability.ObservabilityUnitTest

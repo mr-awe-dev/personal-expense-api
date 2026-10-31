@@ -32,7 +32,7 @@ personal-expense-api,com.fastwork.expense.config,PostgresOpaqueTextJdbcType,0,10
 personal-expense-api,com.fastwork.expense.config,PostgresOpaqueTextJdbcType.new ValueBinder() {...},0,15,0,0,0,5,0,3,0,3
 personal-expense-api,com.fastwork.expense.config,SpaCsrfTokenRequestHandler,0,26,0,4,0,7,0,5,0,3
 personal-expense-api,com.fastwork.expense.config,SecurityConfig.CsrfCookieFilter,0,16,0,2,0,5,0,2,0,1
-personal-expense-api,com.fastwork.expense.config,SecurityConfig,0,355,0,6,0,84,0,30,0,27
+personal-expense-api,com.fastwork.expense.config,SecurityConfig,0,367,0,6,0,84,0,30,0,27
 personal-expense-api,com.fastwork.expense.ops,OpsController,0,7,0,0,0,2,0,2,0,2
 personal-expense-api,com.fastwork.expense.user,ChangePasswordRequest,0,9,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.user,MeResponse,0,42,0,0,0,9,0,2,0,2
@@ -128,3 +128,10 @@ personal-expense-api,com.fastwork.expense.common,WebConfig,0,77,0,4,0,14,0,5,0,3
 personal-expense-api,com.fastwork.expense.common,TxType,0,22,0,2,0,4,0,3,0,2
 personal-expense-api,com.fastwork.expense.common,TxTypeConverter,0,21,0,4,0,3,0,5,0,3
 personal-expense-api,com.fastwork.expense.common,ApiError,0,33,0,4,0,4,0,5,0,3
+personal-expense-api,com.fastwork.expense.passkey,WebAuthnServer,0,80,0,8,0,25,0,8,0,4
+personal-expense-api,com.fastwork.expense.passkey,PasskeyService,0,639,1,39,0,201,1,37,0,18
+personal-expense-api,com.fastwork.expense.passkey,WebAuthnProperties,0,59,0,6,0,17,0,12,0,9
+personal-expense-api,com.fastwork.expense.passkey,PasskeyController,0,50,0,0,0,9,0,6,0,6
+personal-expense-api,com.fastwork.expense.passkey,PasskeyDto,0,41,0,2,0,7,0,3,0,2
+personal-expense-api,com.fastwork.expense.passkey,Passkey,0,173,0,10,0,49,0,30,0,25
+personal-expense-api,com.fastwork.expense.passkey,PasskeyCredentialRepository,0,292,1,25,0,68,1,29,0,17

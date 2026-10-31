@@ -57,6 +57,14 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\observability\RequestCorrelationFilter.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\observability\UserContextMdcFilter.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\ops\OpsController.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\Passkey.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\PasskeyController.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\PasskeyCredentialRepository.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\PasskeyDto.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\PasskeyRepository.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\PasskeyService.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\WebAuthnProperties.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\passkey\WebAuthnServer.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\receipt\ReceiptImagePreprocessor.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\receipt\ReceiptOcrException.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\receipt\ReceiptParser.java

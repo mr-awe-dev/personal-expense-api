@@ -188,14 +188,19 @@ public class SecurityConfig {
                                                                 .csrfTokenRequestHandler(
                                                                                 new SpaCsrfTokenRequestHandler()) // Handler
                                                                 // khusus SPA
-                                                                .ignoringRequestMatchers(
-                                                                                "/api/v1/auth/login", // Login harus
-                                                                                                      // di-exempt dari
-                                                                                // CSRF
-                                                                                "/api/v1/health",
-                                                                                "/actuator/**",
-                                                                                "/v3/api-docs/**",
-                                                                                "/swagger-ui/**"))
+                                                .ignoringRequestMatchers(
+                                                                "/api/v1/auth/login", // Login harus
+                                                                                      // di-exempt dari
+                                                                // CSRF
+                                                                "/api/v1/passkey/login", // Assertion
+                                                                                          // passkey:
+                                                                                          // sama
+                                                                                          // pola dengan
+                                                                                          // /auth/login
+                                                                "/api/v1/health",
+                                                                "/actuator/**",
+                                                                "/v3/api-docs/**",
+                                                                "/swagger-ui/**"))
 
                                 // Custom Filters
                                 .addFilterAfter(
@@ -235,6 +240,8 @@ public class SecurityConfig {
                                                                 "/api/v1/health",
                                                                 "/api/v1/auth/login",
                                                                 "/api/v1/auth/reset-password",
+                                                                "/api/v1/passkey/login",
+                                                                "/api/v1/passkey/login/options",
                                                                 "/actuator/health",
                                                                 "/actuator/health/**",
                                                                 "/v3/api-docs",

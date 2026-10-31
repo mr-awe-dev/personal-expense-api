@@ -1,6 +1,8 @@
+com\fastwork\expense\passkey\PasskeyRepository.class
 com\fastwork\expense\export\BackupFile.class
 com\fastwork\expense\closing\ClosingService$Window.class
 com\fastwork\expense\summary\SummaryService$BudgetRow.class
+com\fastwork\expense\passkey\Passkey.class
 com\fastwork\expense\closing\ClosingRecord.class
 com\fastwork\expense\config\PostgresOpaqueTextJdbcType$1.class
 com\fastwork\expense\export\ImportService$CatRef.class
@@ -11,6 +13,7 @@ com\fastwork\expense\auth\PasswordResetRepository.class
 com\fastwork\expense\common\OpenApiConfig.class
 com\fastwork\expense\user\UserRoleConverter.class
 com\fastwork\expense\closing\ClosingService$Bounds.class
+com\fastwork\expense\passkey\PasskeyController.class
 com\fastwork\expense\category\CategoryService.class
 com\fastwork\expense\receipt\TextExtractor.class
 com\fastwork\expense\user\User.class
@@ -29,6 +32,7 @@ com\fastwork\expense\budget\BudgetPeriod.class
 com\fastwork\expense\config\SecurityConfig.class
 com\fastwork\expense\config\SpaCsrfTokenRequestHandler.class
 com\fastwork\expense\summary\SummaryService$CategoryRow.class
+com\fastwork\expense\passkey\WebAuthnProperties.class
 com\fastwork\expense\summary\CategoryShare.class
 com\fastwork\expense\common\ApiError.class
 com\fastwork\expense\export\BackupFile$BackupBudget.class
@@ -63,6 +67,7 @@ com\fastwork\expense\today\TodayController.class
 com\fastwork\expense\receipt\ReceiptScanController.class
 com\fastwork\expense\export\BackupFile$BackupProfile.class
 com\fastwork\expense\transaction\TransactionService$1.class
+com\fastwork\expense\passkey\PasskeyService.class
 com\fastwork\expense\summary\SummaryService$Window.class
 com\fastwork\expense\today\TodayStatus.class
 com\fastwork\expense\user\UserService.class
@@ -77,6 +82,7 @@ com\fastwork\expense\closing\ClosingController.class
 com\fastwork\expense\auth\AuthController.class
 com\fastwork\expense\closing\ClosingExport$CategorySubtotal.class
 com\fastwork\expense\closing\ClosingService$Totals.class
+com\fastwork\expense\passkey\PasskeyCredentialRepository.class
 com\fastwork\expense\export\ImportResult.class
 com\fastwork\expense\summary\TableGroup.class
 com\fastwork\expense\auth\LoginRateLimiter$EmailState.class
@@ -108,6 +114,7 @@ com\fastwork\expense\user\UserRepository.class
 com\fastwork\expense\auth\AuthService.class
 com\fastwork\expense\category\CategoryRepository.class
 com\fastwork\expense\auth\PasswordReset.class
+com\fastwork\expense\passkey\PasskeyDto.class
 com\fastwork\expense\common\ApiError$FieldError.class
 com\fastwork\expense\summary\TableTotals.class
 com\fastwork\expense\common\UuidV7.class
@@ -134,4 +141,5 @@ com\fastwork\expense\transaction\TransactionResponse.class
 com\fastwork\expense\ExpenseApplication.class
 com\fastwork\expense\budget\BudgetController.class
 com\fastwork\expense\category\UpdateCategoryRequest.class
+com\fastwork\expense\passkey\WebAuthnServer.class
 com\fastwork\expense\summary\BudgetActualRow.class

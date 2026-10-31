@@ -30,6 +30,11 @@ app:
     email-requests-per-window: 5
     delay-base-ms: 500
     delay-max-ms: 8000
+  webauthn:
+    enabled: true
+    rp-id: localhost
+    rp-name: Personal Expense
+    allowed-origins: http://localhost:5173,http://localhost:8107
 
 logging:
   level:

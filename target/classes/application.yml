@@ -103,6 +103,13 @@ app:
     email-requests-per-window: ${RATE_LIMIT_EMAIL_PER_WINDOW}
     delay-base-ms: ${RATE_LIMIT_DELAY_BASE_MS}
     delay-max-ms: ${RATE_LIMIT_DELAY_MAX_MS}
+  # Passkey (WebAuthn) fitur opt-in: aktifkan dengan env WEBAUTHN_* (lihat .agent/configuration.md).
+  # Jika aktif, fail-fast menuntut rp-id + allowed-origins terisi (validasi saat startup).
+  webauthn:
+    enabled: ${WEBAUTHN_ENABLED:false}
+    rp-id: ${WEBAUTHN_RP_ID:}
+    rp-name: ${WEBAUTHN_RP_NAME:Personal Expense}
+    allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:}
   observability:
     enabled: true
     slow-threshold: 500ms

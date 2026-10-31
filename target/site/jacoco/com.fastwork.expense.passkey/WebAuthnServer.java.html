@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WebAuthnServer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">personal-expense-api</a> &gt; <a href="index.source.html" class="el_package">com.fastwork.expense.passkey</a> &gt; <span class="el_source">WebAuthnServer.java</span></div><h1>WebAuthnServer.java</h1><pre class="source lang-java linenums">package com.fastwork.expense.passkey;
+
+import java.util.HashSet;
+
+import jakarta.annotation.PostConstruct;
+
+import org.springframework.stereotype.Component;
+
+import com.yubico.webauthn.RelyingParty;
+import com.yubico.webauthn.data.RelyingPartyIdentity;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Pemegang tunggal instance {@link RelyingParty} Yubico. Instans dibuat malas
+ * agar deployment tanpa passkey (fitur mati) tidak pernah menyentuh konfigurasi;
+ * saat fitur aktif, konfigurasi tidak valid menggagalkan startup (fail-fast D36).
+ */
+@Component
+@RequiredArgsConstructor
+<span class="fc" id="L22">@Slf4j</span>
+public class WebAuthnServer {
+
+    private final WebAuthnProperties properties;
+    private final PasskeyCredentialRepository credentials;
+    private volatile RelyingParty party;
+
+    @PostConstruct
+    void validate() {
+<span class="fc bfc" id="L31" title="All 2 branches covered.">        if (!properties.isEnabled()) {</span>
+<span class="fc" id="L32">            return;</span>
+        }
+<span class="fc bfc" id="L34" title="All 2 branches covered.">        if (properties.getRpId().isEmpty()) {</span>
+<span class="fc" id="L35">            throw new IllegalStateException(</span>
+                    &quot;Passkey aktif tetapi WEBAUTHN_RP_ID kosong (harus = host yang dilihat browser)&quot;);
+        }
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        if (properties.getAllowedOrigins().isEmpty()) {</span>
+<span class="fc" id="L39">            throw new IllegalStateException(</span>
+                    &quot;Passkey aktif tetapi WEBAUTHN_ALLOWED_ORIGINS kosong&quot;);
+        }
+<span class="fc" id="L42">        get();</span>
+<span class="fc" id="L43">        log.info(</span>
+                &quot;Passkey aktif: rpId={}, origins={}&quot;,
+<span class="fc" id="L45">                properties.getRpId(),</span>
+<span class="fc" id="L46">                properties.getAllowedOrigins());</span>
+<span class="fc" id="L47">    }</span>
+
+    public synchronized RelyingParty get() {
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (party == null) {</span>
+<span class="fc" id="L51">            party = build();</span>
+        }
+<span class="fc" id="L53">        return party;</span>
+    }
+
+    private RelyingParty build() {
+        RelyingPartyIdentity identity =
+<span class="fc" id="L58">                RelyingPartyIdentity.builder()</span>
+<span class="fc" id="L59">                        .id(properties.getRpId())</span>
+<span class="fc" id="L60">                        .name(properties.getRpName())</span>
+<span class="fc" id="L61">                        .build();</span>
+<span class="fc" id="L62">        return RelyingParty.builder()</span>
+<span class="fc" id="L63">                .identity(identity)</span>
+<span class="fc" id="L64">                .credentialRepository(credentials)</span>
+<span class="fc" id="L65">                .origins(new HashSet&lt;&gt;(properties.getAllowedOrigins()))</span>
+                // Origin pratinjau Cloudflare (subdomain *.pages.dev) diakui otomatis.
+<span class="fc" id="L67">                .allowOriginSubdomain(true)</span>
+<span class="fc" id="L68">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
