@@ -2,8 +2,9 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 
 WORKDIR /workspace
 COPY pom.xml .
-RUN mvn -B -ntp dependency:go-offline
 
+# dependency:go-offline removed – causes snapshot resolution failure in CI mirrors.
+# The subsequent mvn package step resolves correctly (as verified locally).
 COPY src ./src
 RUN mvn -B -ntp -DskipTests package
 
