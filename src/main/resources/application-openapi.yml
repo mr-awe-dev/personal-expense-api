@@ -37,6 +37,8 @@ app:
     email-requests-per-window: 5
     delay-base-ms: 500
     delay-max-ms: 8000
+  webauthn:
+    enabled: false
 
 logging:
   level:

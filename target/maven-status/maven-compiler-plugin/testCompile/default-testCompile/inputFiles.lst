@@ -1,58 +1,58 @@
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthEdgeFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthRateLimitDelayTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthRateLimitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\LoginRateLimiterUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\PasswordResetFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\PasswordResetServiceUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\budget\BudgetFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\budget\BudgetUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\category\CategoryEdgeFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\category\CategoryFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\category\CategoryUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\cli\CliCommandRunnerTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\closing\ClosingEdgeFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\closing\ClosingExcelWriterTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\closing\ClosingFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\ConvertersTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\GlobalExceptionHandlerTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\UuidV7Test.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\WebConfigTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\config\ConfigJdbcAndCsrfUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\config\HstsEnabledFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\contract\OpenApiExportTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\ExpenseApplicationTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ExportImportFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ExportImportUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ImportScenariosFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\LoggingAspectTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\MonolithModulesTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\ObservabilityUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\RequestContextIntegrationTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\RequestCorrelationFilterTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\observability\UserContextMdcFilterTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\FakeAuthenticator.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyCredentialRepositoryTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyServiceTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\PasskeyTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\passkey\WebAuthnServerTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\PostgresIntegrationTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\ReceiptImagePreprocessorTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\ReceiptParserBranchTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\ReceiptParserTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\ReceiptScanFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\ReceiptScanServiceUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\receipt\TesseractTextExtractorTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\summary\SummaryEdgeFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\summary\SummaryFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\today\TodayEdgeFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\today\TodayFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\today\TodayStatusTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\transaction\TransactionCursorFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\transaction\TransactionFlowTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\transaction\TransactionQuerySafetyTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\transaction\TransactionUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\user\UserUnitTest.java
-C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\WebFlowTestBase.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\AuthEdgeFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\AuthFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\AuthRateLimitDelayTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\AuthRateLimitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\AuthUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\LoginRateLimiterUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\PasswordResetFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\auth\PasswordResetServiceUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\budget\BudgetFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\budget\BudgetUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\category\CategoryEdgeFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\category\CategoryFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\category\CategoryUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\cli\CliCommandRunnerTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\closing\ClosingEdgeFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\closing\ClosingExcelWriterTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\closing\ClosingFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\common\ConvertersTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\common\GlobalExceptionHandlerTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\common\UuidV7Test.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\common\WebConfigTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\config\ConfigJdbcAndCsrfUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\config\HstsEnabledFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\contract\OpenApiExportTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\ExpenseApplicationTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\export\ExportImportFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\export\ExportImportUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\export\ImportScenariosFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\observability\LoggingAspectTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\observability\MonolithModulesTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\observability\ObservabilityUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\observability\RequestContextIntegrationTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\observability\RequestCorrelationFilterTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\observability\UserContextMdcFilterTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\passkey\FakeAuthenticator.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\passkey\PasskeyCredentialRepositoryTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\passkey\PasskeyFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\passkey\PasskeyServiceTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\passkey\PasskeyTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\passkey\WebAuthnServerTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\PostgresIntegrationTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\receipt\ReceiptImagePreprocessorTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\receipt\ReceiptParserBranchTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\receipt\ReceiptParserTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\receipt\ReceiptScanFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\receipt\ReceiptScanServiceUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\receipt\TesseractTextExtractorTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\summary\SummaryEdgeFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\summary\SummaryFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\today\TodayEdgeFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\today\TodayFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\today\TodayStatusTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\transaction\TransactionCursorFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\transaction\TransactionFlowTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\transaction\TransactionQuerySafetyTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\transaction\TransactionUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\user\UserUnitTest.java
+C:\La Awe - Fastwork\2026\MY-APP\personal-expense-api\src\test\java\com\fastwork\expense\WebFlowTestBase.java
