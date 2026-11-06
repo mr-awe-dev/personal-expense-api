@@ -27,7 +27,7 @@ app:
   security:
     hsts-enabled: false
   cors:
-    allowed-origins: ''
+    allowed-origins: ""
   receipt:
     binary: tesseract
     languages: ind+eng
@@ -37,6 +37,8 @@ app:
     email-requests-per-window: 5
     delay-base-ms: 500
     delay-max-ms: 8000
+  webauthn:
+    enabled: false
   email:
     enabled: false
     api-key: dummy
