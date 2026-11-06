@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fastwork.expense.common.AuditLog;
 import com.fastwork.expense.user.ChangePasswordRequest;
 import com.fastwork.expense.user.CurrentUserService;
 import com.fastwork.expense.user.UserService;
@@ -53,11 +54,22 @@ public class AuthController {
                 currentUser.get(), request.currentPassword(), request.newPassword());
     }
 
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary =
+                    "Kirim OTP pemulihan password ke email yang terdaftar"
+                    + " (jawaban sama untuk email tak dikenal)")
+    public void forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest httpRequest) {
+        passwordResetService.request(request.email(), AuditLog.clientIp(httpRequest));
+    }
+
     @PostMapping("/reset-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Ganti password dengan kode pemulihan (diterbitkan CLI issue-reset-code)")
+    @Operation(summary = "Ganti password dengan kode pemulihan (OTP email atau CLI)")
     public void resetPassword(
             @Valid @RequestBody ResetPasswordRequest request, HttpServletRequest httpRequest) {
-        passwordResetService.consume(request, httpRequest.getRemoteAddr());
+        passwordResetService.consume(request, AuditLog.clientIp(httpRequest));
     }
 }

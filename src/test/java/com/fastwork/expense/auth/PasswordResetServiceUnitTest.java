@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.fastwork.expense.common.ApiException;
+import com.fastwork.expense.email.EmailSender;
 import com.fastwork.expense.user.UserRepository;
 import com.fastwork.expense.user.UserService;
 
@@ -26,7 +27,8 @@ class PasswordResetServiceUnitTest {
                 mock(UserService.class),
                 mock(PasswordEncoder.class),
                 mock(LoginRateLimiter.class),
-                mock(JdbcClient.class));
+                mock(JdbcClient.class),
+                mock(EmailSender.class));
     }
 
     @Test
@@ -58,5 +60,12 @@ class PasswordResetServiceUnitTest {
     @Test
     void codeTtlIsThirtyMinutes() {
         assertThat(PasswordResetService.CODE_TTL.toMinutes()).isEqualTo(30);
+    }
+
+    @Test
+    void otpRangeIsEightDigitNumeric() {
+        assertThat(PasswordResetService.OTP_SPAN).isEqualTo(90_000_000);
+        assertThat(PasswordResetService.OTP_MIN_INCLUSIVE + PasswordResetService.OTP_SPAN)
+                .isEqualTo(100_000_000);
     }
 }

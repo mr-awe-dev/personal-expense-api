@@ -1,8 +1,9 @@
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-personal-expense-api,com.fastwork.expense.auth,AuthService,0,269,0,16,0,61,0,13,0,5
-personal-expense-api,com.fastwork.expense.auth,AuthController,0,31,0,0,0,8,0,4,0,4
-personal-expense-api,com.fastwork.expense.auth,LoginRateLimiter,0,331,0,32,0,83,0,36,0,20
-personal-expense-api,com.fastwork.expense.auth,PasswordResetService,6,171,0,6,2,47,0,10,0,7
+personal-expense-api,com.fastwork.expense.auth,AuthService,0,206,0,4,0,48,0,5,0,3
+personal-expense-api,com.fastwork.expense.auth,AuthController,0,39,0,0,0,10,0,5,0,5
+personal-expense-api,com.fastwork.expense.auth,ForgotPasswordRequest,0,6,0,0,0,1,0,1,0,1
+personal-expense-api,com.fastwork.expense.auth,LoginRateLimiter,0,376,0,32,0,91,0,36,0,20
+personal-expense-api,com.fastwork.expense.auth,PasswordResetService,6,302,0,8,2,72,0,14,0,10
 personal-expense-api,com.fastwork.expense.auth,ResetPasswordRequest,0,12,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.auth,LoginRequest,0,9,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.auth,LoginResponse,0,6,0,0,0,1,0,1,0,1
@@ -10,7 +11,7 @@ personal-expense-api,com.fastwork.expense.auth,LoginRateLimiter.EmailState,0,6,0
 personal-expense-api,com.fastwork.expense.auth,PasswordReset,0,40,0,0,0,15,0,9,0,9
 personal-expense-api,com.fastwork.expense.summary,TableTotals,0,12,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.summary,SummaryService.SubtotalRow,0,18,0,0,0,1,0,1,0,1
-personal-expense-api,com.fastwork.expense.summary,SummaryService,3,967,3,57,0,212,3,58,0,31
+personal-expense-api,com.fastwork.expense.summary,SummaryService,3,1001,3,61,0,220,3,61,0,32
 personal-expense-api,com.fastwork.expense.summary,TableRow,0,24,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.summary,TrendPoint,0,9,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.summary,SummaryResponse,0,24,0,0,0,1,0,1,0,1
@@ -32,8 +33,13 @@ personal-expense-api,com.fastwork.expense.config,PostgresOpaqueTextJdbcType,0,10
 personal-expense-api,com.fastwork.expense.config,PostgresOpaqueTextJdbcType.new ValueBinder() {...},0,15,0,0,0,5,0,3,0,3
 personal-expense-api,com.fastwork.expense.config,SpaCsrfTokenRequestHandler,0,26,0,4,0,7,0,5,0,3
 personal-expense-api,com.fastwork.expense.config,SecurityConfig.CsrfCookieFilter,0,16,0,2,0,5,0,2,0,1
-personal-expense-api,com.fastwork.expense.config,SecurityConfig,0,367,0,6,0,84,0,30,0,27
+personal-expense-api,com.fastwork.expense.config,SecurityConfig,0,375,0,6,0,84,0,30,0,27
 personal-expense-api,com.fastwork.expense.ops,OpsController,0,7,0,0,0,2,0,2,0,2
+personal-expense-api,com.fastwork.expense.email,BrevoEmailSender,0,107,0,2,0,28,0,5,0,4
+personal-expense-api,com.fastwork.expense.email,NoopEmailSender,0,6,0,0,0,2,0,2,0,2
+personal-expense-api,com.fastwork.expense.email,EmailConfig,0,31,0,4,0,7,0,5,0,3
+personal-expense-api,com.fastwork.expense.email,EmailMessage,0,12,0,0,0,1,0,1,0,1
+personal-expense-api,com.fastwork.expense.email,EmailProperties,0,58,0,6,0,17,0,12,0,9
 personal-expense-api,com.fastwork.expense.user,ChangePasswordRequest,0,9,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.user,MeResponse,0,42,0,0,0,9,0,2,0,2
 personal-expense-api,com.fastwork.expense.user,UserRole,0,9,0,0,0,2,0,1,0,1
@@ -47,12 +53,12 @@ personal-expense-api,com.fastwork.expense.user,PetUserDetailsService,0,33,0,2,0,
 personal-expense-api,com.fastwork.expense.user,UserController,0,28,0,2,0,8,0,3,0,2
 personal-expense-api,com.fastwork.expense.export,BackupFile,0,24,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.export,BackupFile.BackupBudget,0,24,0,0,0,1,0,1,0,1
-personal-expense-api,com.fastwork.expense.export,ExportService,0,213,0,0,0,60,0,6,0,6
+personal-expense-api,com.fastwork.expense.export,ExportService,0,257,0,0,0,69,0,6,0,6
 personal-expense-api,com.fastwork.expense.export,ImportResult,0,15,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.export,BackupFile.BackupTransaction,0,30,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.export,ExportController,0,106,0,6,0,22,0,7,0,4
 personal-expense-api,com.fastwork.expense.export,BackupFile.BackupClosing,0,30,0,0,0,1,0,1,0,1
-personal-expense-api,com.fastwork.expense.export,ImportService,0,1180,0,116,0,312,0,81,0,23
+personal-expense-api,com.fastwork.expense.export,ImportService,0,1237,0,118,0,322,0,83,0,24
 personal-expense-api,com.fastwork.expense.export,BackupFile.BackupProfile,0,12,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.export,BackupFile.BackupCategory,0,21,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.export,ImportService.CatRef,0,9,0,0,0,1,0,1,0,1
@@ -103,7 +109,7 @@ personal-expense-api,com.fastwork.expense.transaction,UpdateTransactionRequest,0
 personal-expense-api,com.fastwork.expense.transaction,TransactionTotals,0,21,0,0,0,2,0,2,0,2
 personal-expense-api,com.fastwork.expense.transaction,TransactionPage,0,12,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.transaction,TransactionResponse,0,30,0,0,0,1,0,1,0,1
-personal-expense-api,com.fastwork.expense.transaction,TransactionService,0,756,1,74,0,186,1,63,0,23
+personal-expense-api,com.fastwork.expense.transaction,TransactionService,5,750,2,73,1,186,2,62,0,23
 personal-expense-api,com.fastwork.expense.transaction,UpsertTransactionRequest,0,18,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.transaction,TransactionService.Filter,0,18,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.transaction,TransactionSort,0,39,0,0,0,7,0,1,0,1
@@ -119,19 +125,20 @@ personal-expense-api,com.fastwork.expense.category,Category,0,62,0,0,0,22,0,12,0
 personal-expense-api,com.fastwork.expense.category,UpdateCategoryRequest,0,9,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.category,CategoryResponse,0,35,0,0,0,7,0,2,0,2
 personal-expense-api,com.fastwork.expense.common,OpenApiConfig,0,3,0,0,0,1,0,1,0,1
+personal-expense-api,com.fastwork.expense.common,AuditLog,0,58,0,14,0,13,0,9,0,2
 personal-expense-api,com.fastwork.expense.common,GlobalExceptionHandler,0,211,0,12,0,58,0,22,0,16
 personal-expense-api,com.fastwork.expense.common,GlobalExceptionHandler.new TypeReference() {...},0,3,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.common,ApiError.FieldError,0,9,0,0,0,1,0,1,0,1
 personal-expense-api,com.fastwork.expense.common,UuidV7,0,114,0,6,0,19,0,5,0,2
-personal-expense-api,com.fastwork.expense.common,ApiException,0,73,0,0,0,17,0,11,0,11
+personal-expense-api,com.fastwork.expense.common,ApiException,0,80,0,0,0,18,0,12,0,12
 personal-expense-api,com.fastwork.expense.common,WebConfig,0,77,0,4,0,14,0,5,0,3
 personal-expense-api,com.fastwork.expense.common,TxType,0,22,0,2,0,4,0,3,0,2
 personal-expense-api,com.fastwork.expense.common,TxTypeConverter,0,21,0,4,0,3,0,5,0,3
 personal-expense-api,com.fastwork.expense.common,ApiError,0,33,0,4,0,4,0,5,0,3
 personal-expense-api,com.fastwork.expense.passkey,WebAuthnServer,0,80,0,8,0,25,0,8,0,4
-personal-expense-api,com.fastwork.expense.passkey,PasskeyService,0,639,1,39,0,201,1,37,0,18
+personal-expense-api,com.fastwork.expense.passkey,PasskeyService,0,639,1,39,0,182,1,37,0,18
 personal-expense-api,com.fastwork.expense.passkey,WebAuthnProperties,0,59,0,6,0,17,0,12,0,9
 personal-expense-api,com.fastwork.expense.passkey,PasskeyController,0,50,0,0,0,9,0,6,0,6
 personal-expense-api,com.fastwork.expense.passkey,PasskeyDto,0,41,0,2,0,7,0,3,0,2
 personal-expense-api,com.fastwork.expense.passkey,Passkey,0,173,0,10,0,49,0,30,0,25
-personal-expense-api,com.fastwork.expense.passkey,PasskeyCredentialRepository,0,292,1,25,0,68,1,29,0,17
+personal-expense-api,com.fastwork.expense.passkey,PasskeyCredentialRepository,0,292,1,25,0,70,1,29,0,17

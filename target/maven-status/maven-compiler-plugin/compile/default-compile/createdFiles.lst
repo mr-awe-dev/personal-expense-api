@@ -27,7 +27,6 @@ com\fastwork\expense\transaction\UpsertTransactionRequest.class
 com\fastwork\expense\budget\BudgetService.class
 com\fastwork\expense\summary\SummaryTableResponse.class
 com\fastwork\expense\receipt\ReceiptParser$Extracted.class
-com\fastwork\expense\export\ExportService.class
 com\fastwork\expense\budget\BudgetPeriod.class
 com\fastwork\expense\config\SecurityConfig.class
 com\fastwork\expense\config\SpaCsrfTokenRequestHandler.class

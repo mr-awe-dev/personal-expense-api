@@ -109,7 +109,11 @@ class ConfigJdbcAndCsrfUnitTest {
     @Test
     void cspDirectivesExpandConnectSrcOnlyWhenBackendUrlIsSet() {
         // backend-url kosong → satu origin saja (proxy nginx/Caddy menangani /api).
-        assertThat(SecurityConfig.cspDirectives("")).endsWith("connect-src 'self';");
+        String empty = SecurityConfig.cspDirectives("");
+        assertThat(empty).endsWith("connect-src 'self';");
+        // form-action harus diakhiri ';' sebelum connect-src agar directive tidak malformed.
+        assertThat(empty).contains("form-action 'self'; connect-src 'self';");
+        assertThat(empty).doesNotContain("form-action 'self' connect-src");
 
         String withBackend = SecurityConfig.cspDirectives("https://api.example.com");
         assertThat(withBackend).contains("connect-src 'self' https://api.example.com;");

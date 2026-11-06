@@ -233,7 +233,7 @@ public class SummaryService {
                             difference));
 <span class="fc" id="L234">        }</span>
 
-<span class="fc" id="L236">        Totals totals = typeTotals(userId, window);</span>
+<span class="fc" id="L236">        Totals totals = totalsOf(subtotalRows);</span>
 <span class="fc" id="L237">        boolean truncated =</span>
                 jdbcClient
 <span class="fc" id="L239">                                .sql(TOTAL_COUNT_SQL)</span>
@@ -324,163 +324,180 @@ public class SummaryService {
 
 <span class="fc" id="L325">    private record TotalPart(TxType type, long total) {}</span>
 
+    /**
+     * Grand total income/expense langsung dijumlahkan dari baris subtotal per kategori (sudah
+     * lengkap, tidak pernah terpotong) — hemat satu SELECT GROUP BY per request tabel.
+     */
+    private static Totals totalsOf(List&lt;SubtotalRow&gt; rows) {
+<span class="fc" id="L332">        long income = 0;</span>
+<span class="fc" id="L333">        long expense = 0;</span>
+<span class="fc bfc" id="L334" title="All 2 branches covered.">        for (SubtotalRow row : rows) {</span>
+<span class="fc bfc" id="L335" title="All 2 branches covered.">            if (row.type() == TxType.INCOME) {</span>
+<span class="fc" id="L336">                income += row.subtotal();</span>
+            } else {
+<span class="fc" id="L338">                expense += row.subtotal();</span>
+            }
+<span class="fc" id="L340">        }</span>
+<span class="fc" id="L341">        return new Totals(income, expense);</span>
+    }
+
     /** Savings rate = net/income (persen); null bila income 0 (pembagian nol). */
     private static Long savingsRate(Totals totals) {
-<span class="fc bfc" id="L329" title="All 2 branches covered.">        if (totals.income() &lt;= 0) {</span>
-<span class="fc" id="L330">            return null;</span>
+<span class="fc bfc" id="L346" title="All 2 branches covered.">        if (totals.income() &lt;= 0) {</span>
+<span class="fc" id="L347">            return null;</span>
         }
-<span class="fc" id="L332">        return Math.round((totals.income() - totals.expense()) * 100.0 / totals.income());</span>
+<span class="fc" id="L349">        return Math.round((totals.income() - totals.expense()) * 100.0 / totals.income());</span>
     }
 
     private static long totalAmount(List&lt;CategoryRow&gt; rows) {
-<span class="fc" id="L336">        long total = 0;</span>
-<span class="fc bfc" id="L337" title="All 2 branches covered.">        for (CategoryRow row : rows) {</span>
-<span class="fc" id="L338">            total += row.amount();</span>
-<span class="fc" id="L339">        }</span>
-<span class="fc" id="L340">        return total;</span>
+<span class="fc" id="L353">        long total = 0;</span>
+<span class="fc bfc" id="L354" title="All 2 branches covered.">        for (CategoryRow row : rows) {</span>
+<span class="fc" id="L355">            total += row.amount();</span>
+<span class="fc" id="L356">        }</span>
+<span class="fc" id="L357">        return total;</span>
     }
 
     private static void largestRemainderParts(
             List&lt;CategoryRow&gt; rows,
             Map&lt;CategoryRow, Long&gt; floors,
             Map&lt;CategoryRow, Long&gt; remainders) {
-<span class="fc" id="L347">        long total = totalAmount(rows);</span>
-<span class="fc bfc" id="L348" title="All 2 branches covered.">        for (CategoryRow row : rows) {</span>
-<span class="fc" id="L349">            long scaled = row.amount() * 100;</span>
-<span class="pc bpc" id="L350" title="1 of 2 branches missed.">            floors.put(row, total &gt; 0 ? scaled / total : 0);</span>
-<span class="pc bpc" id="L351" title="1 of 2 branches missed.">            remainders.put(row, total &gt; 0 ? scaled % total : 0);</span>
-<span class="fc" id="L352">        }</span>
-<span class="fc" id="L353">    }</span>
+<span class="fc" id="L364">        long total = totalAmount(rows);</span>
+<span class="fc bfc" id="L365" title="All 2 branches covered.">        for (CategoryRow row : rows) {</span>
+<span class="fc" id="L366">            long scaled = row.amount() * 100;</span>
+<span class="pc bpc" id="L367" title="1 of 2 branches missed.">            floors.put(row, total &gt; 0 ? scaled / total : 0);</span>
+<span class="pc bpc" id="L368" title="1 of 2 branches missed.">            remainders.put(row, total &gt; 0 ? scaled % total : 0);</span>
+<span class="fc" id="L369">        }</span>
+<span class="fc" id="L370">    }</span>
 
     private List&lt;BudgetActualRow&gt; budgetActuals(UUID userId, Window window) {
-<span class="fc" id="L356">        List&lt;BudgetRow&gt; rows =</span>
+<span class="fc" id="L373">        List&lt;BudgetRow&gt; rows =</span>
                 jdbcClient
-<span class="fc" id="L358">                        .sql(BUDGET_ACTUAL_SQL)</span>
-<span class="fc" id="L359">                        .paramSource(source(userId, window))</span>
-<span class="fc" id="L360">                        .query((rs, rowNum) -&gt; mapBudgetRow(rs))</span>
-<span class="fc" id="L361">                        .list();</span>
-<span class="fc" id="L362">        List&lt;BudgetActualRow&gt; actuals = new ArrayList&lt;&gt;(rows.size());</span>
-<span class="fc bfc" id="L363" title="All 2 branches covered.">        for (BudgetRow row : rows) {</span>
-<span class="fc" id="L364">            long budget = effectiveBudget(row.period(), row.amount(), window);</span>
-<span class="fc" id="L365">            actuals.add(</span>
+<span class="fc" id="L375">                        .sql(BUDGET_ACTUAL_SQL)</span>
+<span class="fc" id="L376">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L377">                        .query((rs, rowNum) -&gt; mapBudgetRow(rs))</span>
+<span class="fc" id="L378">                        .list();</span>
+<span class="fc" id="L379">        List&lt;BudgetActualRow&gt; actuals = new ArrayList&lt;&gt;(rows.size());</span>
+<span class="fc bfc" id="L380" title="All 2 branches covered.">        for (BudgetRow row : rows) {</span>
+<span class="fc" id="L381">            long budget = effectiveBudget(row.period(), row.amount(), window);</span>
+<span class="fc" id="L382">            actuals.add(</span>
                     new BudgetActualRow(
-<span class="fc" id="L367">                            row.categoryId(),</span>
-<span class="fc" id="L368">                            row.name(),</span>
-<span class="fc" id="L369">                            row.archived(),</span>
-<span class="fc" id="L370">                            row.period().name(),</span>
+<span class="fc" id="L384">                            row.categoryId(),</span>
+<span class="fc" id="L385">                            row.name(),</span>
+<span class="fc" id="L386">                            row.archived(),</span>
+<span class="fc" id="L387">                            row.period().name(),</span>
                             budget,
-<span class="fc" id="L372">                            row.spent(),</span>
-<span class="fc" id="L373">                            budget - row.spent()));</span>
-<span class="fc" id="L374">        }</span>
-<span class="fc" id="L375">        return actuals;</span>
+<span class="fc" id="L389">                            row.spent(),</span>
+<span class="fc" id="L390">                            budget - row.spent()));</span>
+<span class="fc" id="L391">        }</span>
+<span class="fc" id="L392">        return actuals;</span>
     }
 
     private List&lt;TrendPoint&gt; trend(UUID userId, Window window) {
-<span class="fc" id="L379">        List&lt;TrendPoint&gt; raw =</span>
+<span class="fc" id="L396">        List&lt;TrendPoint&gt; raw =</span>
                 jdbcClient
-<span class="fc" id="L381">                        .sql(TREND_SQL)</span>
-<span class="fc" id="L382">                        .paramSource(source(userId, window))</span>
-<span class="fc" id="L383">                        .query(</span>
+<span class="fc" id="L398">                        .sql(TREND_SQL)</span>
+<span class="fc" id="L399">                        .paramSource(source(userId, window))</span>
+<span class="fc" id="L400">                        .query(</span>
                                 (rs, rowNum) -&gt;
-<span class="fc" id="L385">                                        new TrendPoint(</span>
-<span class="fc" id="L386">                                                rs.getObject(&quot;date&quot;, LocalDate.class),</span>
-<span class="fc" id="L387">                                                rs.getLong(&quot;expense&quot;)))</span>
-<span class="fc" id="L388">                        .list();</span>
-<span class="fc" id="L389">        Map&lt;LocalDate, Long&gt; sums = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L390" title="All 2 branches covered.">        for (TrendPoint point : raw) {</span>
-<span class="fc" id="L391">            sums.put(point.date(), point.expense());</span>
-<span class="fc" id="L392">        }</span>
-<span class="fc" id="L393">        List&lt;TrendPoint&gt; trend = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L394">        long days = ChronoUnit.DAYS.between(window.from(), window.to()) + 1;</span>
-<span class="fc bfc" id="L395" title="All 2 branches covered.">        for (long offset = 0; offset &lt; days; offset++) {</span>
-<span class="fc" id="L396">            LocalDate date = window.from().plusDays(offset);</span>
-<span class="fc" id="L397">            trend.add(new TrendPoint(date, sums.getOrDefault(date, 0L)));</span>
+<span class="fc" id="L402">                                        new TrendPoint(</span>
+<span class="fc" id="L403">                                                rs.getObject(&quot;date&quot;, LocalDate.class),</span>
+<span class="fc" id="L404">                                                rs.getLong(&quot;expense&quot;)))</span>
+<span class="fc" id="L405">                        .list();</span>
+<span class="fc" id="L406">        Map&lt;LocalDate, Long&gt; sums = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L407" title="All 2 branches covered.">        for (TrendPoint point : raw) {</span>
+<span class="fc" id="L408">            sums.put(point.date(), point.expense());</span>
+<span class="fc" id="L409">        }</span>
+<span class="fc" id="L410">        List&lt;TrendPoint&gt; trend = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L411">        long days = ChronoUnit.DAYS.between(window.from(), window.to()) + 1;</span>
+<span class="fc bfc" id="L412" title="All 2 branches covered.">        for (long offset = 0; offset &lt; days; offset++) {</span>
+<span class="fc" id="L413">            LocalDate date = window.from().plusDays(offset);</span>
+<span class="fc" id="L414">            trend.add(new TrendPoint(date, sums.getOrDefault(date, 0L)));</span>
         }
-<span class="fc" id="L399">        return trend;</span>
+<span class="fc" id="L416">        return trend;</span>
     }
 
     private List&lt;TableRow&gt; rows(UUID userId, Window window, long limit) {
-<span class="fc" id="L403">        return jdbcClient</span>
-<span class="fc" id="L404">                .sql(TABLE_ROWS_SQL)</span>
-<span class="fc" id="L405">                .paramSource(source(userId, window).addValue(&quot;limit&quot;, limit))</span>
-<span class="fc" id="L406">                .query((rs, rowNum) -&gt; mapTableRow(rs))</span>
-<span class="fc" id="L407">                .list();</span>
+<span class="fc" id="L420">        return jdbcClient</span>
+<span class="fc" id="L421">                .sql(TABLE_ROWS_SQL)</span>
+<span class="fc" id="L422">                .paramSource(source(userId, window).addValue(&quot;limit&quot;, limit))</span>
+<span class="fc" id="L423">                .query((rs, rowNum) -&gt; mapTableRow(rs))</span>
+<span class="fc" id="L424">                .list();</span>
     }
 
     private static Map&lt;String, List&lt;TableRow&gt;&gt; indexRowsByGroup(List&lt;TableRow&gt; rows) {
-<span class="fc" id="L411">        Map&lt;String, List&lt;TableRow&gt;&gt; indexed = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L412" title="All 2 branches covered.">        for (TableRow row : rows) {</span>
-<span class="fc" id="L413">            indexed.computeIfAbsent(</span>
-<span class="fc" id="L414">                            groupKeyOf(TxType.valueOf(row.type()), row.categoryId()),</span>
-<span class="fc" id="L415">                            key -&gt; new ArrayList&lt;&gt;())</span>
-<span class="fc" id="L416">                    .add(row);</span>
-<span class="fc" id="L417">        }</span>
-<span class="fc" id="L418">        return indexed;</span>
+<span class="fc" id="L428">        Map&lt;String, List&lt;TableRow&gt;&gt; indexed = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L429" title="All 2 branches covered.">        for (TableRow row : rows) {</span>
+<span class="fc" id="L430">            indexed.computeIfAbsent(</span>
+<span class="fc" id="L431">                            groupKeyOf(TxType.valueOf(row.type()), row.categoryId()),</span>
+<span class="fc" id="L432">                            key -&gt; new ArrayList&lt;&gt;())</span>
+<span class="fc" id="L433">                    .add(row);</span>
+<span class="fc" id="L434">        }</span>
+<span class="fc" id="L435">        return indexed;</span>
     }
 
     private static String groupKeyOf(TxType type, UUID categoryId) {
-<span class="fc" id="L422">        return type.name() + &quot;|&quot; + categoryId;</span>
+<span class="fc" id="L439">        return type.name() + &quot;|&quot; + categoryId;</span>
     }
 
     private static BudgetRow budgetFor(List&lt;BudgetRow&gt; budgets, UUID categoryId) {
-<span class="fc bfc" id="L426" title="All 2 branches covered.">        for (BudgetRow budget : budgets) {</span>
-<span class="fc bfc" id="L427" title="All 2 branches covered.">            if (budget.categoryId().equals(categoryId)) {</span>
-<span class="fc" id="L428">                return budget;</span>
+<span class="fc bfc" id="L443" title="All 2 branches covered.">        for (BudgetRow budget : budgets) {</span>
+<span class="fc bfc" id="L444" title="All 2 branches covered.">            if (budget.categoryId().equals(categoryId)) {</span>
+<span class="fc" id="L445">                return budget;</span>
             }
-<span class="fc" id="L430">        }</span>
-<span class="fc" id="L431">        return null;</span>
+<span class="fc" id="L447">        }</span>
+<span class="fc" id="L448">        return null;</span>
     }
 
     /** Budget harian diskalakan × jumlah hari rentang; bulanan dibandingkan langsung. */
     private static long effectiveBudget(BudgetPeriod period, long amount, Window window) {
-<span class="fc bfc" id="L436" title="All 2 branches covered.">        if (period == BudgetPeriod.MONTHLY) {</span>
-<span class="fc" id="L437">            return amount;</span>
+<span class="fc bfc" id="L453" title="All 2 branches covered.">        if (period == BudgetPeriod.MONTHLY) {</span>
+<span class="fc" id="L454">            return amount;</span>
         }
-<span class="fc" id="L439">        long days = ChronoUnit.DAYS.between(window.from(), window.to()) + 1;</span>
-<span class="fc" id="L440">        return amount * days;</span>
+<span class="fc" id="L456">        long days = ChronoUnit.DAYS.between(window.from(), window.to()) + 1;</span>
+<span class="fc" id="L457">        return amount * days;</span>
     }
 
     private static TxType typeOf(String raw) {
-<span class="fc" id="L444">        return TxType.valueOf(raw.toUpperCase(Locale.ROOT));</span>
+<span class="fc" id="L461">        return TxType.valueOf(raw.toUpperCase(Locale.ROOT));</span>
     }
 
     private static CategoryRow mapCategoryRow(ResultSet rs) throws SQLException {
-<span class="fc" id="L448">        return new CategoryRow(</span>
-<span class="fc" id="L449">                typeOf(rs.getString(&quot;type&quot;)),</span>
-<span class="fc" id="L450">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
-<span class="fc" id="L451">                rs.getString(&quot;category_name&quot;),</span>
-<span class="fc" id="L452">                rs.getBoolean(&quot;category_archived&quot;),</span>
-<span class="fc" id="L453">                rs.getLong(&quot;amount&quot;));</span>
+<span class="fc" id="L465">        return new CategoryRow(</span>
+<span class="fc" id="L466">                typeOf(rs.getString(&quot;type&quot;)),</span>
+<span class="fc" id="L467">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L468">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L469">                rs.getBoolean(&quot;category_archived&quot;),</span>
+<span class="fc" id="L470">                rs.getLong(&quot;amount&quot;));</span>
     }
 
     private static BudgetRow mapBudgetRow(ResultSet rs) throws SQLException {
-<span class="fc" id="L457">        return new BudgetRow(</span>
-<span class="fc" id="L458">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
-<span class="fc" id="L459">                rs.getString(&quot;category_name&quot;),</span>
-<span class="fc" id="L460">                rs.getBoolean(&quot;category_archived&quot;),</span>
-<span class="fc" id="L461">                BudgetPeriod.valueOf(rs.getString(&quot;period&quot;).toUpperCase(Locale.ROOT)),</span>
-<span class="fc" id="L462">                rs.getLong(&quot;budget_amount&quot;),</span>
-<span class="fc" id="L463">                rs.getLong(&quot;spent&quot;));</span>
+<span class="fc" id="L474">        return new BudgetRow(</span>
+<span class="fc" id="L475">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L476">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L477">                rs.getBoolean(&quot;category_archived&quot;),</span>
+<span class="fc" id="L478">                BudgetPeriod.valueOf(rs.getString(&quot;period&quot;).toUpperCase(Locale.ROOT)),</span>
+<span class="fc" id="L479">                rs.getLong(&quot;budget_amount&quot;),</span>
+<span class="fc" id="L480">                rs.getLong(&quot;spent&quot;));</span>
     }
 
     private static SubtotalRow mapSubtotalRow(ResultSet rs) throws SQLException {
-<span class="fc" id="L467">        return new SubtotalRow(</span>
-<span class="fc" id="L468">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
-<span class="fc" id="L469">                rs.getString(&quot;category_name&quot;),</span>
-<span class="fc" id="L470">                rs.getBoolean(&quot;category_archived&quot;),</span>
-<span class="fc" id="L471">                typeOf(rs.getString(&quot;type&quot;)),</span>
-<span class="fc" id="L472">                rs.getLong(&quot;subtotal&quot;));</span>
+<span class="fc" id="L484">        return new SubtotalRow(</span>
+<span class="fc" id="L485">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L486">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L487">                rs.getBoolean(&quot;category_archived&quot;),</span>
+<span class="fc" id="L488">                typeOf(rs.getString(&quot;type&quot;)),</span>
+<span class="fc" id="L489">                rs.getLong(&quot;subtotal&quot;));</span>
     }
 
     private static TableRow mapTableRow(ResultSet rs) throws SQLException {
-<span class="fc" id="L476">        return new TableRow(</span>
-<span class="fc" id="L477">                rs.getObject(&quot;id&quot;, UUID.class),</span>
-<span class="fc" id="L478">                rs.getObject(&quot;date&quot;, LocalDate.class),</span>
-<span class="fc" id="L479">                typeOf(rs.getString(&quot;type&quot;)).name(),</span>
-<span class="fc" id="L480">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
-<span class="fc" id="L481">                rs.getString(&quot;category_name&quot;),</span>
-<span class="fc" id="L482">                rs.getString(&quot;description&quot;),</span>
-<span class="fc" id="L483">                rs.getLong(&quot;amount&quot;));</span>
+<span class="fc" id="L493">        return new TableRow(</span>
+<span class="fc" id="L494">                rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L495">                rs.getObject(&quot;date&quot;, LocalDate.class),</span>
+<span class="fc" id="L496">                typeOf(rs.getString(&quot;type&quot;)).name(),</span>
+<span class="fc" id="L497">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L498">                rs.getString(&quot;category_name&quot;),</span>
+<span class="fc" id="L499">                rs.getString(&quot;description&quot;),</span>
+<span class="fc" id="L500">                rs.getLong(&quot;amount&quot;));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

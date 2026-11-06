@@ -1,5 +1,6 @@
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\auth\AuthController.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\auth\AuthService.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\auth\ForgotPasswordRequest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\auth\LoginRateLimiter.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\auth\LoginRequest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\auth\LoginResponse.java
@@ -32,6 +33,7 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\closing\ClosingService.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\common\ApiError.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\common\ApiException.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\common\AuditLog.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\common\GlobalExceptionHandler.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\common\OpenApiConfig.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\common\TxType.java
@@ -43,6 +45,12 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\config\PostgresOpaqueTextJdbcType.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\config\SecurityConfig.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\config\SpaCsrfTokenRequestHandler.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\email\BrevoEmailSender.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\email\EmailConfig.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\email\EmailMessage.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\email\EmailProperties.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\email\EmailSender.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\email\NoopEmailSender.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\ExpenseApplication.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\export\BackupFile.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\main\java\com\fastwork\expense\export\ExportController.java

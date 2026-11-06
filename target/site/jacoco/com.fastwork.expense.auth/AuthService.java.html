@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fastwork.expense.common.ApiException;
+import com.fastwork.expense.common.AuditLog;
 import com.fastwork.expense.user.MeResponse;
 import com.fastwork.expense.user.PetPrincipal;
 import com.fastwork.expense.user.PetUserDetailsService;
@@ -29,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
-<span class="fc" id="L32">@Slf4j</span>
+<span class="fc" id="L33">@Slf4j</span>
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
@@ -38,9 +39,9 @@ public class AuthService {
     private final LoginRateLimiter rateLimiter;
 
     // Marker khusus untuk memudahkan filtering di JSON log (Kibana/Grafana)
-<span class="fc" id="L41">    private static final Marker AUTH_MARKER = MarkerFactory.getMarker(&quot;AUTH&quot;);</span>
-<span class="fc" id="L42">    private static final Marker LOGIN_SUCCESS_MARKER = MarkerFactory.getMarker(&quot;LOGIN_SUCCESS&quot;);</span>
-<span class="fc" id="L43">    private static final Marker LOGIN_FAILURE_MARKER = MarkerFactory.getMarker(&quot;LOGIN_FAILURE&quot;);</span>
+<span class="fc" id="L42">    private static final Marker AUTH_MARKER = MarkerFactory.getMarker(&quot;AUTH&quot;);</span>
+<span class="fc" id="L43">    private static final Marker LOGIN_SUCCESS_MARKER = MarkerFactory.getMarker(&quot;LOGIN_SUCCESS&quot;);</span>
+<span class="fc" id="L44">    private static final Marker LOGIN_FAILURE_MARKER = MarkerFactory.getMarker(&quot;LOGIN_FAILURE&quot;);</span>
 
     @Transactional
     public LoginResponse login(
@@ -48,124 +49,89 @@ public class AuthService {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
 
-<span class="fc bfc" id="L51" title="All 2 branches covered.">        String email = request.email() == null ? &quot;&quot; : request.email().trim();</span>
-<span class="fc" id="L52">        String ipAddress = resolveClientIp(httpRequest);</span>
-<span class="fc" id="L53">        String userAgent = httpRequest.getHeader(&quot;User-Agent&quot;);</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        String email = request.email() == null ? &quot;&quot; : request.email().trim();</span>
+<span class="fc" id="L53">        String ipAddress = AuditLog.clientIp(httpRequest);</span>
+<span class="fc" id="L54">        String userAgent = httpRequest.getHeader(&quot;User-Agent&quot;);</span>
 
         // 1. Log percobaan login (Audit awal)
-<span class="fc" id="L56">        log.info(</span>
+<span class="fc" id="L57">        log.info(</span>
                 AUTH_MARKER,
                 &quot;Login attempt: email={}, ip={}, userAgent={}&quot;,
-<span class="fc" id="L59">                maskEmail(email),</span>
+<span class="fc" id="L60">                AuditLog.maskEmail(email),</span>
                 ipAddress,
                 userAgent);
 
-<span class="fc" id="L63">        rateLimiter.assertAttemptAllowed(httpRequest.getRemoteAddr(), email);</span>
+<span class="fc" id="L64">        rateLimiter.assertAttemptAllowed(httpRequest.getRemoteAddr(), email);</span>
 
         Authentication authentication;
         try {
-<span class="fc" id="L67">            authentication = authenticationManager.authenticate(</span>
-<span class="fc" id="L68">                    UsernamePasswordAuthenticationToken.unauthenticated(</span>
-<span class="fc" id="L69">                            email, request.password()));</span>
-<span class="fc" id="L70">        } catch (DisabledException ex) {</span>
-<span class="fc" id="L71">            rateLimiter.recordFailure(email);</span>
-<span class="fc" id="L72">            log.warn(</span>
+<span class="fc" id="L68">            authentication = authenticationManager.authenticate(</span>
+<span class="fc" id="L69">                    UsernamePasswordAuthenticationToken.unauthenticated(</span>
+<span class="fc" id="L70">                            email, request.password()));</span>
+<span class="fc" id="L71">        } catch (DisabledException ex) {</span>
+<span class="fc" id="L72">            rateLimiter.recordFailure(email);</span>
+<span class="fc" id="L73">            log.warn(</span>
                     LOGIN_FAILURE_MARKER,
-                    &quot;Login failed (Account Disabled): email={}, ip={}&quot;,
-<span class="fc" id="L75">                    maskEmail(email),</span>
+                &quot;Login failed (Account Disabled): email={}, ip={}&quot;,
+<span class="fc" id="L76">                AuditLog.maskEmail(email),</span>
                     ipAddress);
-<span class="fc" id="L77">            throw ApiException.unauthorized(&quot;Akun dinonaktifkan&quot;);</span>
-<span class="fc" id="L78">        } catch (AuthenticationException ex) {</span>
-<span class="fc" id="L79">            rateLimiter.recordFailure(email);</span>
+<span class="fc" id="L78">            throw ApiException.unauthorized(&quot;Akun dinonaktifkan&quot;);</span>
+<span class="fc" id="L79">        } catch (AuthenticationException ex) {</span>
+<span class="fc" id="L80">            rateLimiter.recordFailure(email);</span>
             // Jangan pernah log password! Log hanya alasan error dari Spring Security.
-<span class="fc" id="L81">            log.warn(</span>
+<span class="fc" id="L82">            log.warn(</span>
                     LOGIN_FAILURE_MARKER,
-                    &quot;Login failed (Invalid Credentials): email={}, ip={}, reason={}&quot;,
-<span class="fc" id="L84">                    maskEmail(email),</span>
+                &quot;Login failed (Invalid Credentials): email={}, ip={}, reason={}&quot;,
+<span class="fc" id="L85">                AuditLog.maskEmail(email),</span>
                     ipAddress,
-<span class="fc" id="L86">                    ex.getMessage());</span>
-<span class="fc" id="L87">            throw ApiException.unauthorized(&quot;Email atau password salah&quot;);</span>
-<span class="fc" id="L88">        }</span>
+<span class="fc" id="L87">                    ex.getMessage());</span>
+<span class="fc" id="L88">            throw ApiException.unauthorized(&quot;Email atau password salah&quot;);</span>
+<span class="fc" id="L89">        }</span>
 
         // 2. Login Berhasil
-<span class="fc" id="L91">        rateLimiter.recordSuccess(email);</span>
+<span class="fc" id="L92">        rateLimiter.recordSuccess(email);</span>
 
-<span class="fc" id="L93">        SecurityContext context = SecurityContextHolder.createEmptyContext();</span>
-<span class="fc" id="L94">        context.setAuthentication(authentication);</span>
-<span class="fc" id="L95">        SecurityContextHolder.setContext(context);</span>
-<span class="fc" id="L96">        httpRequest.getSession(true);</span>
-<span class="fc" id="L97">        securityContextRepository.saveContext(context, httpRequest, httpResponse);</span>
+<span class="fc" id="L94">        SecurityContext context = SecurityContextHolder.createEmptyContext();</span>
+<span class="fc" id="L95">        context.setAuthentication(authentication);</span>
+<span class="fc" id="L96">        SecurityContextHolder.setContext(context);</span>
+<span class="fc" id="L97">        httpRequest.getSession(true);</span>
+<span class="fc" id="L98">        securityContextRepository.saveContext(context, httpRequest, httpResponse);</span>
 
-<span class="fc" id="L99">        PetPrincipal principal = (PetPrincipal) authentication.getPrincipal();</span>
-<span class="fc" id="L100">        User user = userDetailsService.userById(principal.getId());</span>
+<span class="fc" id="L100">        PetPrincipal principal = (PetPrincipal) authentication.getPrincipal();</span>
+<span class="fc" id="L101">        User user = userDetailsService.userById(principal.getId());</span>
 
         // 3. INJEK userId ke MDC.
         // Berkat logback config Anda (uid=%X{userId:-}), semua log selanjutnya di
         // request ini otomatis ada userId-nya.
-<span class="fc" id="L105">        MDC.put(&quot;userId&quot;, String.valueOf(user.getId()));</span>
+<span class="fc" id="L106">        MDC.put(&quot;userId&quot;, String.valueOf(user.getId()));</span>
 
         // Sesudah getSession(true) di atas, session dipastikan sudah ada.
-<span class="fc" id="L108">        String sessionId = httpRequest.getSession(false).getId();</span>
+<span class="fc" id="L109">        String sessionId = httpRequest.getSession(false).getId();</span>
 
-<span class="fc" id="L110">        log.info(</span>
+<span class="fc" id="L111">        log.info(</span>
                 LOGIN_SUCCESS_MARKER,
                 &quot;Login successful: userId={}, email={}, ip={}, sessionId={}&quot;,
-<span class="fc" id="L113">                user.getId(),</span>
-<span class="fc" id="L114">                maskEmail(email),</span>
+<span class="fc" id="L114">                user.getId(),</span>
+<span class="fc" id="L115">                AuditLog.maskEmail(email),</span>
                 ipAddress,
                 sessionId);
 
-<span class="fc" id="L118">        return new LoginResponse(MeResponse.from(user));</span>
+<span class="fc" id="L119">        return new LoginResponse(MeResponse.from(user));</span>
     }
 
     public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-<span class="fc" id="L122">        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
-<span class="fc bfc" id="L123" title="All 2 branches covered.">        String email = authentication != null ? authentication.getName() : &quot;unknown&quot;;</span>
+<span class="fc" id="L123">        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        String email = authentication != null ? authentication.getName() : &quot;unknown&quot;;</span>
 
-<span class="fc" id="L125">        log.info(</span>
+<span class="fc" id="L126">        log.info(</span>
                 AUTH_MARKER,
                 &quot;Logout executed: email={}, ip={}&quot;,
-<span class="fc" id="L128">                maskEmail(email),</span>
-<span class="fc" id="L129">                resolveClientIp(httpRequest));</span>
+<span class="fc" id="L129">                AuditLog.maskEmail(email),</span>
+<span class="fc" id="L130">                AuditLog.clientIp(httpRequest));</span>
 
-<span class="fc" id="L131">        new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);</span>
-<span class="fc" id="L132">        SecurityContextHolder.clearContext();</span>
-<span class="fc" id="L133">        MDC.remove(&quot;userId&quot;); // Bersihkan MDC setelah logout</span>
-<span class="fc" id="L134">    }</span>
-
-    /**
-     * Mengambil IP asli klien. Karena aplikasi berjalan di belakang Caddy/Docker,
-     * httpRequest.getRemoteAddr() mungkin mengembalikan IP internal Docker.
-     */
-    private String resolveClientIp(HttpServletRequest request) {
-<span class="fc" id="L141">        String xfHeader = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
-<span class="fc bfc" id="L142" title="All 4 branches covered.">        if (xfHeader != null &amp;&amp; !xfHeader.isEmpty()) {</span>
-<span class="fc" id="L143">            return xfHeader.split(&quot;,&quot;)[0].trim(); // Ambil IP klien pertama</span>
-        }
-<span class="fc" id="L145">        String realIp = request.getHeader(&quot;X-Real-IP&quot;);</span>
-<span class="fc bfc" id="L146" title="All 4 branches covered.">        if (realIp != null &amp;&amp; !realIp.isEmpty()) {</span>
-<span class="fc" id="L147">            return realIp;</span>
-        }
-<span class="fc" id="L149">        return request.getRemoteAddr();</span>
-    }
-
-    /**
-     * Masking email untuk keamanan PII (Personally Identifiable Information).
-     * Contoh:
-     * &quot;admin@fastwork.co&quot; -&gt; &quot;a***@fastwork.co&quot;
-     */
-    private String maskEmail(String email) {
-<span class="fc bfc" id="L158" title="All 2 branches covered.">        if (!email.contains(&quot;@&quot;)) {</span>
-<span class="fc" id="L159">            return &quot;***&quot;;</span>
-        }
-
-<span class="fc" id="L162">        int atIndex = email.indexOf(&quot;@&quot;);</span>
-
-<span class="fc bfc" id="L164" title="All 2 branches covered.">        if (atIndex &lt;= 1) {</span>
-<span class="fc" id="L165">            return &quot;***&quot; + email.substring(atIndex);</span>
-        }
-
-<span class="fc" id="L168">        return email.charAt(0) + &quot;***&quot; + email.substring(atIndex);</span>
-    }
+<span class="fc" id="L132">        new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);</span>
+<span class="fc" id="L133">        SecurityContextHolder.clearContext();</span>
+<span class="fc" id="L134">        MDC.remove(&quot;userId&quot;); // Bersihkan MDC setelah logout</span>
+<span class="fc" id="L135">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

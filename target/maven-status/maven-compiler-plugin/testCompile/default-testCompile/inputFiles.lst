@@ -3,6 +3,7 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthRateLimitDelayTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthRateLimitTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\AuthUnitTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\ForgotPasswordFlowTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\LoginRateLimiterUnitTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\PasswordResetFlowTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\auth\PasswordResetServiceUnitTest.java
@@ -15,6 +16,7 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\closing\ClosingEdgeFlowTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\closing\ClosingExcelWriterTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\closing\ClosingFlowTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\AuditLogTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\ConvertersTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\GlobalExceptionHandlerTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\common\UuidV7Test.java
@@ -22,6 +24,9 @@ C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\config\ConfigJdbcAndCsrfUnitTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\config\HstsEnabledFlowTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\contract\OpenApiExportTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\email\BrevoEmailSenderTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\email\EmailConfigTest.java
+C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\email\EmailPropertiesTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\ExpenseApplicationTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ExportImportFlowTest.java
 C:\My-Portfolio\FASTWORK\Client\personal-expense\api\src\test\java\com\fastwork\expense\export\ExportImportUnitTest.java

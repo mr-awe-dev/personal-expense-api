@@ -2,6 +2,7 @@ package com.fastwork.expense.export;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -13,9 +14,11 @@ import com.fastwork.expense.user.User;
 import com.fastwork.expense.user.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ExportService {
 
     private static final String ORDER_CREATED =
@@ -41,10 +44,7 @@ public class ExportService {
         BackupFile.BackupProfile profile =
                 new BackupFile.BackupProfile(
                         user.getDisplayName(), user.getTimezone(), user.getDailyLimit());
-        return new BackupFile(
-                1,
-                java.time.Instant.now(),
-                profile,
+        List<BackupFile.BackupCategory> categories =
                 jdbcClient
                         .sql(
                                 """
@@ -53,7 +53,8 @@ public class ExportService {
                                         + ORDER_CREATED)
                         .param("userId", userId)
                         .query(CATEGORY_MAPPER)
-                        .list(),
+                        .list();
+        List<BackupFile.BackupTransaction> transactions =
                 jdbcClient
                         .sql(
                                 """
@@ -63,7 +64,8 @@ public class ExportService {
                                         + ORDER_CREATED)
                         .param("userId", userId)
                         .query(TRANSACTION_MAPPER)
-                        .list(),
+                        .list();
+        List<BackupFile.BackupBudget> budgets =
                 jdbcClient
                         .sql(
                                 """
@@ -72,7 +74,8 @@ public class ExportService {
                                         + ORDER_CREATED)
                         .param("userId", userId)
                         .query(BUDGET_MAPPER)
-                        .list(),
+                        .list();
+        List<BackupFile.BackupClosing> closings =
                 jdbcClient
                         .sql(
                                 """
@@ -82,7 +85,16 @@ public class ExportService {
                                         + ORDER_CLOSED)
                         .param("userId", userId)
                         .query(CLOSING_MAPPER)
-                        .list());
+                        .list();
+        log.info(
+                "Export backup: userId={}, kategori={}, transaksi={}, budget={}, arsip={}",
+                userId,
+                categories.size(),
+                transactions.size(),
+                budgets.size(),
+                closings.size());
+        return new BackupFile(1, java.time.Instant.now(), profile, categories, transactions,
+                budgets, closings);
     }
 
     private static BackupFile.BackupCategory mapCategory(ResultSet rs, int rowNum)

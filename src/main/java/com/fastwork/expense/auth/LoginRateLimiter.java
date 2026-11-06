@@ -10,10 +10,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import com.fastwork.expense.common.ApiException;
+import com.fastwork.expense.common.AuditLog;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.EstimationProbe;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Rate limiter percobaan login: batas per-IP per menit, batas per-email per jendela 15 menit, dan
@@ -21,7 +24,11 @@ import io.github.bucket4j.EstimationProbe;
  */
 @Component
 @ConfigurationProperties(prefix = "app.rate-limit")
+@Slf4j
 public class LoginRateLimiter {
+
+    /** Email selalu di-mask di log karena limiter menerima input mentah dari form login. */
+    private static final String EMAIL_LOG = "email={}, action={}";
 
     private static final Duration EMAIL_WINDOW = Duration.ofMinutes(15);
 
@@ -53,6 +60,7 @@ public class LoginRateLimiter {
                         clientIp,
                         key -> fixedWindowBucket(ipRequestsPerMinute, Duration.ofMinutes(1)));
         if (!ipBucket.tryConsume(1)) {
+            log.warn("Rate limit IP (per menit): ip={}", clientIp);
             throw ApiException.rateLimited(
                     60, "Terlalu banyak percobaan dari jaringan ini. Coba lagi nanti.");
         }
@@ -70,6 +78,11 @@ public class LoginRateLimiter {
             EstimationProbe probe = state.attempts.estimateAbilityToConsume(1);
             long seconds =
                     Math.max(1, (probe.getNanosToWaitForRefill() + 999_999_999L) / 1_000_000_000L);
+            log.warn(
+                    "Rate limit email per jendela: " + EMAIL_LOG + ", waitSeconds={}",
+                    AuditLog.maskEmail(email),
+                    action,
+                    seconds);
             throw ApiException.rateLimited(
                     seconds,
                     "Terlalu banyak percobaan " + action + " untuk email ini. Coba lagi nanti.");
@@ -78,6 +91,11 @@ public class LoginRateLimiter {
         Instant allowed = state.nextAllowedAt;
         if (now.isBefore(allowed)) {
             long seconds = Math.max(1, Duration.between(now, allowed).toSeconds());
+            log.warn(
+                    "Delay progresif aktif: " + EMAIL_LOG + ", waitSeconds={}",
+                    AuditLog.maskEmail(email),
+                    action,
+                    seconds);
             throw ApiException.rateLimited(seconds, "Tunggu beberapa detik sebelum mencoba lagi.");
         }
     }

@@ -54,12 +54,17 @@ public class ApiException extends RuntimeException {
 <span class="fc" id="L54">        return new ApiException(HttpStatus.UNAUTHORIZED, &quot;UNAUTHORIZED&quot;, message);</span>
     }
 
-    public static ApiException rateLimited(long retryAfterSeconds, String message) {
+    public static ApiException serviceUnavailable(String message) {
 <span class="fc" id="L58">        return new ApiException(</span>
+                HttpStatus.SERVICE_UNAVAILABLE, &quot;SERVICE_UNAVAILABLE&quot;, message);
+    }
+
+    public static ApiException rateLimited(long retryAfterSeconds, String message) {
+<span class="fc" id="L63">        return new ApiException(</span>
                 HttpStatus.TOO_MANY_REQUESTS,
                 &quot;RATE_LIMITED&quot;,
                 message,
-<span class="fc" id="L62">                Long.valueOf(retryAfterSeconds));</span>
+<span class="fc" id="L67">                Long.valueOf(retryAfterSeconds));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

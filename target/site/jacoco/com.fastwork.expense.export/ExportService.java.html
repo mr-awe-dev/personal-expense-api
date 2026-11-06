@@ -2,6 +2,7 @@
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -13,9 +14,11 @@ import com.fastwork.expense.user.User;
 import com.fastwork.expense.user.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+<span class="fc" id="L21">@Slf4j</span>
 public class ExportService {
 
     private static final String ORDER_CREATED =
@@ -23,13 +26,13 @@ public class ExportService {
     private static final String ORDER_CLOSED =
             &quot; where user_id = :userId order by closed_at asc, id asc&quot;;
 
-<span class="fc" id="L26">    private static final RowMapper&lt;BackupFile.BackupCategory&gt; CATEGORY_MAPPER =</span>
+<span class="fc" id="L29">    private static final RowMapper&lt;BackupFile.BackupCategory&gt; CATEGORY_MAPPER =</span>
             ExportService::mapCategory;
-<span class="fc" id="L28">    private static final RowMapper&lt;BackupFile.BackupTransaction&gt; TRANSACTION_MAPPER =</span>
+<span class="fc" id="L31">    private static final RowMapper&lt;BackupFile.BackupTransaction&gt; TRANSACTION_MAPPER =</span>
             ExportService::mapTransaction;
-<span class="fc" id="L30">    private static final RowMapper&lt;BackupFile.BackupBudget&gt; BUDGET_MAPPER =</span>
+<span class="fc" id="L33">    private static final RowMapper&lt;BackupFile.BackupBudget&gt; BUDGET_MAPPER =</span>
             ExportService::mapBudget;
-<span class="fc" id="L32">    private static final RowMapper&lt;BackupFile.BackupClosing&gt; CLOSING_MAPPER =</span>
+<span class="fc" id="L35">    private static final RowMapper&lt;BackupFile.BackupClosing&gt; CLOSING_MAPPER =</span>
             ExportService::mapClosing;
 
     private final JdbcClient jdbcClient;
@@ -37,14 +40,11 @@ public class ExportService {
 
     @Transactional(readOnly = true)
     public BackupFile export(UUID userId) {
-<span class="fc" id="L40">        User user = userRepository.findById(userId).orElseThrow();</span>
-<span class="fc" id="L41">        BackupFile.BackupProfile profile =</span>
+<span class="fc" id="L43">        User user = userRepository.findById(userId).orElseThrow();</span>
+<span class="fc" id="L44">        BackupFile.BackupProfile profile =</span>
                 new BackupFile.BackupProfile(
-<span class="fc" id="L43">                        user.getDisplayName(), user.getTimezone(), user.getDailyLimit());</span>
-<span class="fc" id="L44">        return new BackupFile(</span>
-                1,
-<span class="fc" id="L46">                java.time.Instant.now(),</span>
-                profile,
+<span class="fc" id="L46">                        user.getDisplayName(), user.getTimezone(), user.getDailyLimit());</span>
+<span class="fc" id="L47">        List&lt;BackupFile.BackupCategory&gt; categories =</span>
                 jdbcClient
 <span class="fc" id="L49">                        .sql(</span>
                                 &quot;&quot;&quot;
@@ -53,86 +53,98 @@ public class ExportService {
                                         + ORDER_CREATED)
 <span class="fc" id="L54">                        .param(&quot;userId&quot;, userId)</span>
 <span class="fc" id="L55">                        .query(CATEGORY_MAPPER)</span>
-<span class="fc" id="L56">                        .list(),</span>
+<span class="fc" id="L56">                        .list();</span>
+<span class="fc" id="L57">        List&lt;BackupFile.BackupTransaction&gt; transactions =</span>
                 jdbcClient
-<span class="fc" id="L58">                        .sql(</span>
+<span class="fc" id="L59">                        .sql(</span>
                                 &quot;&quot;&quot;
                                 select id, date, type, category_id, description, amount, closing_id,
                                        created_at, updated_at
                                 from transactions&quot;&quot;&quot;
                                         + ORDER_CREATED)
-<span class="fc" id="L64">                        .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L65">                        .query(TRANSACTION_MAPPER)</span>
-<span class="fc" id="L66">                        .list(),</span>
+<span class="fc" id="L65">                        .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L66">                        .query(TRANSACTION_MAPPER)</span>
+<span class="fc" id="L67">                        .list();</span>
+<span class="fc" id="L68">        List&lt;BackupFile.BackupBudget&gt; budgets =</span>
                 jdbcClient
-<span class="fc" id="L68">                        .sql(</span>
+<span class="fc" id="L70">                        .sql(</span>
                                 &quot;&quot;&quot;
                                 select id, category_id, period, amount, description, created_at, updated_at
                                 from budgets&quot;&quot;&quot;
                                         + ORDER_CREATED)
-<span class="fc" id="L73">                        .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L74">                        .query(BUDGET_MAPPER)</span>
-<span class="fc" id="L75">                        .list(),</span>
+<span class="fc" id="L75">                        .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L76">                        .query(BUDGET_MAPPER)</span>
+<span class="fc" id="L77">                        .list();</span>
+<span class="fc" id="L78">        List&lt;BackupFile.BackupClosing&gt; closings =</span>
                 jdbcClient
-<span class="fc" id="L77">                        .sql(</span>
+<span class="fc" id="L80">                        .sql(</span>
                                 &quot;&quot;&quot;
                                 select id, period_start, period_end, total_income, total_expense, net,
                                        tx_count, file_name, closed_at
                                 from closings&quot;&quot;&quot;
                                         + ORDER_CLOSED)
-<span class="fc" id="L83">                        .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L84">                        .query(CLOSING_MAPPER)</span>
-<span class="fc" id="L85">                        .list());</span>
+<span class="fc" id="L86">                        .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L87">                        .query(CLOSING_MAPPER)</span>
+<span class="fc" id="L88">                        .list();</span>
+<span class="fc" id="L89">        log.info(</span>
+                &quot;Export backup: userId={}, kategori={}, transaksi={}, budget={}, arsip={}&quot;,
+                userId,
+<span class="fc" id="L92">                categories.size(),</span>
+<span class="fc" id="L93">                transactions.size(),</span>
+<span class="fc" id="L94">                budgets.size(),</span>
+<span class="fc" id="L95">                closings.size());</span>
+<span class="fc" id="L96">        return new BackupFile(1, java.time.Instant.now(), profile, categories, transactions,</span>
+                budgets, closings);
     }
 
     private static BackupFile.BackupCategory mapCategory(ResultSet rs, int rowNum)
             throws SQLException {
-<span class="fc" id="L90">        return new BackupFile.BackupCategory(</span>
-<span class="fc" id="L91">                rs.getObject(&quot;id&quot;, UUID.class),</span>
-<span class="fc" id="L92">                rs.getString(&quot;type&quot;),</span>
-<span class="fc" id="L93">                rs.getString(&quot;name&quot;),</span>
-<span class="fc" id="L94">                rs.getBoolean(&quot;archived&quot;),</span>
-<span class="fc" id="L95">                rs.getTimestamp(&quot;created_at&quot;).toInstant(),</span>
-<span class="fc" id="L96">                rs.getTimestamp(&quot;updated_at&quot;).toInstant());</span>
+<span class="fc" id="L102">        return new BackupFile.BackupCategory(</span>
+<span class="fc" id="L103">                rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L104">                rs.getString(&quot;type&quot;),</span>
+<span class="fc" id="L105">                rs.getString(&quot;name&quot;),</span>
+<span class="fc" id="L106">                rs.getBoolean(&quot;archived&quot;),</span>
+<span class="fc" id="L107">                rs.getTimestamp(&quot;created_at&quot;).toInstant(),</span>
+<span class="fc" id="L108">                rs.getTimestamp(&quot;updated_at&quot;).toInstant());</span>
     }
 
     private static BackupFile.BackupTransaction mapTransaction(ResultSet rs, int rowNum)
             throws SQLException {
-<span class="fc" id="L101">        return new BackupFile.BackupTransaction(</span>
-<span class="fc" id="L102">                rs.getObject(&quot;id&quot;, UUID.class),</span>
-<span class="fc" id="L103">                rs.getDate(&quot;date&quot;).toLocalDate(),</span>
-<span class="fc" id="L104">                rs.getString(&quot;type&quot;),</span>
-<span class="fc" id="L105">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
-<span class="fc" id="L106">                rs.getString(&quot;description&quot;),</span>
-<span class="fc" id="L107">                rs.getLong(&quot;amount&quot;),</span>
-<span class="fc" id="L108">                rs.getObject(&quot;closing_id&quot;, UUID.class),</span>
-<span class="fc" id="L109">                rs.getTimestamp(&quot;created_at&quot;).toInstant(),</span>
-<span class="fc" id="L110">                rs.getTimestamp(&quot;updated_at&quot;).toInstant());</span>
+<span class="fc" id="L113">        return new BackupFile.BackupTransaction(</span>
+<span class="fc" id="L114">                rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L115">                rs.getDate(&quot;date&quot;).toLocalDate(),</span>
+<span class="fc" id="L116">                rs.getString(&quot;type&quot;),</span>
+<span class="fc" id="L117">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L118">                rs.getString(&quot;description&quot;),</span>
+<span class="fc" id="L119">                rs.getLong(&quot;amount&quot;),</span>
+<span class="fc" id="L120">                rs.getObject(&quot;closing_id&quot;, UUID.class),</span>
+<span class="fc" id="L121">                rs.getTimestamp(&quot;created_at&quot;).toInstant(),</span>
+<span class="fc" id="L122">                rs.getTimestamp(&quot;updated_at&quot;).toInstant());</span>
     }
 
     private static BackupFile.BackupBudget mapBudget(ResultSet rs, int rowNum) throws SQLException {
-<span class="fc" id="L114">        return new BackupFile.BackupBudget(</span>
-<span class="fc" id="L115">                rs.getObject(&quot;id&quot;, UUID.class),</span>
-<span class="fc" id="L116">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
-<span class="fc" id="L117">                rs.getString(&quot;period&quot;),</span>
-<span class="fc" id="L118">                rs.getLong(&quot;amount&quot;),</span>
-<span class="fc" id="L119">                rs.getString(&quot;description&quot;),</span>
-<span class="fc" id="L120">                rs.getTimestamp(&quot;created_at&quot;).toInstant(),</span>
-<span class="fc" id="L121">                rs.getTimestamp(&quot;updated_at&quot;).toInstant());</span>
+<span class="fc" id="L126">        return new BackupFile.BackupBudget(</span>
+<span class="fc" id="L127">                rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L128">                rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L129">                rs.getString(&quot;period&quot;),</span>
+<span class="fc" id="L130">                rs.getLong(&quot;amount&quot;),</span>
+<span class="fc" id="L131">                rs.getString(&quot;description&quot;),</span>
+<span class="fc" id="L132">                rs.getTimestamp(&quot;created_at&quot;).toInstant(),</span>
+<span class="fc" id="L133">                rs.getTimestamp(&quot;updated_at&quot;).toInstant());</span>
     }
 
     private static BackupFile.BackupClosing mapClosing(ResultSet rs, int rowNum)
             throws SQLException {
-<span class="fc" id="L126">        return new BackupFile.BackupClosing(</span>
-<span class="fc" id="L127">                rs.getObject(&quot;id&quot;, UUID.class),</span>
-<span class="fc" id="L128">                rs.getDate(&quot;period_start&quot;).toLocalDate(),</span>
-<span class="fc" id="L129">                rs.getDate(&quot;period_end&quot;).toLocalDate(),</span>
-<span class="fc" id="L130">                rs.getLong(&quot;total_income&quot;),</span>
-<span class="fc" id="L131">                rs.getLong(&quot;total_expense&quot;),</span>
-<span class="fc" id="L132">                rs.getLong(&quot;net&quot;),</span>
-<span class="fc" id="L133">                rs.getInt(&quot;tx_count&quot;),</span>
-<span class="fc" id="L134">                rs.getString(&quot;file_name&quot;),</span>
-<span class="fc" id="L135">                rs.getTimestamp(&quot;closed_at&quot;).toInstant());</span>
+<span class="fc" id="L138">        return new BackupFile.BackupClosing(</span>
+<span class="fc" id="L139">                rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L140">                rs.getDate(&quot;period_start&quot;).toLocalDate(),</span>
+<span class="fc" id="L141">                rs.getDate(&quot;period_end&quot;).toLocalDate(),</span>
+<span class="fc" id="L142">                rs.getLong(&quot;total_income&quot;),</span>
+<span class="fc" id="L143">                rs.getLong(&quot;total_expense&quot;),</span>
+<span class="fc" id="L144">                rs.getLong(&quot;net&quot;),</span>
+<span class="fc" id="L145">                rs.getInt(&quot;tx_count&quot;),</span>
+<span class="fc" id="L146">                rs.getString(&quot;file_name&quot;),</span>
+<span class="fc" id="L147">                rs.getTimestamp(&quot;closed_at&quot;).toInstant());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

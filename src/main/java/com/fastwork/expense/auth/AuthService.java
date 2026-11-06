@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fastwork.expense.common.ApiException;
+import com.fastwork.expense.common.AuditLog;
 import com.fastwork.expense.user.MeResponse;
 import com.fastwork.expense.user.PetPrincipal;
 import com.fastwork.expense.user.PetUserDetailsService;
@@ -49,14 +50,14 @@ public class AuthService {
             HttpServletResponse httpResponse) {
 
         String email = request.email() == null ? "" : request.email().trim();
-        String ipAddress = resolveClientIp(httpRequest);
+        String ipAddress = AuditLog.clientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
 
         // 1. Log percobaan login (Audit awal)
         log.info(
                 AUTH_MARKER,
                 "Login attempt: email={}, ip={}, userAgent={}",
-                maskEmail(email),
+                AuditLog.maskEmail(email),
                 ipAddress,
                 userAgent);
 
@@ -71,8 +72,8 @@ public class AuthService {
             rateLimiter.recordFailure(email);
             log.warn(
                     LOGIN_FAILURE_MARKER,
-                    "Login failed (Account Disabled): email={}, ip={}",
-                    maskEmail(email),
+                "Login failed (Account Disabled): email={}, ip={}",
+                AuditLog.maskEmail(email),
                     ipAddress);
             throw ApiException.unauthorized("Akun dinonaktifkan");
         } catch (AuthenticationException ex) {
@@ -80,8 +81,8 @@ public class AuthService {
             // Jangan pernah log password! Log hanya alasan error dari Spring Security.
             log.warn(
                     LOGIN_FAILURE_MARKER,
-                    "Login failed (Invalid Credentials): email={}, ip={}, reason={}",
-                    maskEmail(email),
+                "Login failed (Invalid Credentials): email={}, ip={}, reason={}",
+                AuditLog.maskEmail(email),
                     ipAddress,
                     ex.getMessage());
             throw ApiException.unauthorized("Email atau password salah");
@@ -111,7 +112,7 @@ public class AuthService {
                 LOGIN_SUCCESS_MARKER,
                 "Login successful: userId={}, email={}, ip={}, sessionId={}",
                 user.getId(),
-                maskEmail(email),
+                AuditLog.maskEmail(email),
                 ipAddress,
                 sessionId);
 
@@ -125,46 +126,11 @@ public class AuthService {
         log.info(
                 AUTH_MARKER,
                 "Logout executed: email={}, ip={}",
-                maskEmail(email),
-                resolveClientIp(httpRequest));
+                AuditLog.maskEmail(email),
+                AuditLog.clientIp(httpRequest));
 
         new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);
         SecurityContextHolder.clearContext();
         MDC.remove("userId"); // Bersihkan MDC setelah logout
-    }
-
-    /**
-     * Mengambil IP asli klien. Karena aplikasi berjalan di belakang Caddy/Docker,
-     * httpRequest.getRemoteAddr() mungkin mengembalikan IP internal Docker.
-     */
-    private String resolveClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader != null && !xfHeader.isEmpty()) {
-            return xfHeader.split(",")[0].trim(); // Ambil IP klien pertama
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isEmpty()) {
-            return realIp;
-        }
-        return request.getRemoteAddr();
-    }
-
-    /**
-     * Masking email untuk keamanan PII (Personally Identifiable Information).
-     * Contoh:
-     * "admin@fastwork.co" -> "a***@fastwork.co"
-     */
-    private String maskEmail(String email) {
-        if (!email.contains("@")) {
-            return "***";
-        }
-
-        int atIndex = email.indexOf("@");
-
-        if (atIndex <= 1) {
-            return "***" + email.substring(atIndex);
-        }
-
-        return email.charAt(0) + "***" + email.substring(atIndex);
     }
 }

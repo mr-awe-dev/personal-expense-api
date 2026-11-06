@@ -95,7 +95,10 @@ public class TransactionService {
                   amount = excluded.amount,
                   updated_at = now()
                 where transactions.user_id = :userId
-                returning id
+                returning id, date, type, category_id,
+                          (select c.name from categories c where c.id = transactions.category_id)
+                              as category_name,
+                          description, amount, created_at, updated_at
                 """;
         MapSqlParameterSource params =
                 new MapSqlParameterSource()
@@ -106,11 +109,12 @@ public class TransactionService {
                         .addValue("categoryId", request.categoryId())
                         .addValue("description", normalizeDescription(request.description()))
                         .addValue("amount", request.amount());
-        Optional<UUID> saved = jdbcClient.sql(sql).paramSource(params).query(UUID.class).optional();
+        Optional<TransactionResponse> saved =
+                jdbcClient.sql(sql).paramSource(params).query(ROW_MAPPER).optional();
         if (saved.isEmpty()) {
             throw ApiException.notFound("Transaksi tidak ditemukan");
         }
-        return get(userId, id);
+        return saved.get();
     }
 
     @Transactional
@@ -181,7 +185,6 @@ public class TransactionService {
                 select coalesce(sum(case when t.type = 'income' then t.amount end), 0) as income,
                        coalesce(sum(case when t.type = 'expense' then t.amount end), 0) as expense
                 from transactions t
-                left join categories c on c.id = t.category_id
                 """
                         + " where "
                         + where;

@@ -19,19 +19,21 @@ import com.fastwork.expense.common.ApiException;
 import com.fastwork.expense.common.TxType;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+<span class="fc" id="L26">@Slf4j</span>
 public class ImportService {
 
     private static final int SUPPORTED_VERSION = 1;
 
-<span class="fc" id="L29">    private record CatRef(UUID id, TxType type) {}</span>
+<span class="fc" id="L31">    private record CatRef(UUID id, TxType type) {}</span>
 
-<span class="fc" id="L31">    private static final class ImportState {</span>
+<span class="fc" id="L33">    private static final class ImportState {</span>
 
-<span class="fc" id="L33">        final Map&lt;UUID, CatRef&gt; categoriesById = new HashMap&lt;&gt;();</span>
-<span class="fc" id="L34">        final Map&lt;UUID, UUID&gt; closingIds = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L35">        final Map&lt;UUID, CatRef&gt; categoriesById = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L36">        final Map&lt;UUID, UUID&gt; closingIds = new HashMap&lt;&gt;();</span>
         int categoryCount;
         int closingCount;
         int budgetCount;
@@ -42,177 +44,193 @@ public class ImportService {
 
     @Transactional
     public ImportResult importFile(UUID userId, BackupFile file) {
-<span class="fc bfc" id="L45" title="All 4 branches covered.">        if (file == null || file.version() != SUPPORTED_VERSION) {</span>
-<span class="fc" id="L46">            throw ApiException.unprocessable(</span>
+<span class="fc bfc" id="L47" title="All 4 branches covered.">        if (file == null || file.version() != SUPPORTED_VERSION) {</span>
+<span class="fc" id="L48">            throw ApiException.unprocessable(</span>
                     &quot;Format backup tidak didukung (versi &quot;
-<span class="fc bfc" id="L48" title="All 2 branches covered.">                            + (file == null ? &quot;?&quot; : file.version())</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">                            + (file == null ? &quot;?&quot; : file.version())</span>
                             + &quot;)&quot;);
         }
-<span class="fc" id="L51">        ImportState state = new ImportState();</span>
-<span class="fc" id="L52">        Map&lt;UUID, CatRef&gt; preexistingCategories = loadCategoryRefs(userId);</span>
-<span class="fc" id="L53">        Set&lt;UUID&gt; preexistingClosings = loadOwnedClosingIds(userId);</span>
-<span class="fc" id="L54">        applyProfile(userId, file.user());</span>
-<span class="fc" id="L55">        importCategories(userId, file.categories(), state);</span>
-<span class="fc" id="L56">        importClosings(userId, file.closings(), state);</span>
-<span class="fc" id="L57">        importBudgets(userId, file.budgets(), state, preexistingCategories);</span>
-<span class="fc" id="L58">        importTransactions(</span>
-<span class="fc" id="L59">                userId, file.transactions(), state, preexistingCategories, preexistingClosings);</span>
-<span class="fc" id="L60">        return new ImportResult(</span>
+<span class="fc" id="L53">        ImportState state = new ImportState();</span>
+<span class="fc" id="L54">        Map&lt;UUID, CatRef&gt; preexistingCategories = loadCategoryRefs(userId);</span>
+<span class="fc" id="L55">        Set&lt;UUID&gt; preexistingClosings = loadOwnedClosingIds(userId);</span>
+<span class="fc" id="L56">        applyProfile(userId, file.user());</span>
+<span class="fc" id="L57">        importCategories(userId, file.categories(), state);</span>
+<span class="fc" id="L58">        importClosings(userId, file.closings(), state);</span>
+<span class="fc" id="L59">        importBudgets(userId, file.budgets(), state, preexistingCategories);</span>
+<span class="fc" id="L60">        importTransactions(</span>
+<span class="fc" id="L61">                userId, file.transactions(), state, preexistingCategories, preexistingClosings);</span>
+<span class="fc" id="L62">        int imported =</span>
+                state.categoryCount
+                        + state.closingCount
+                        + state.budgetCount
+                        + state.transactionCount;
+<span class="fc" id="L67">        log.info(</span>
+                &quot;Import backup selesai: userId={}, kategori={}, arsip={}, budget={}, transaksi={}&quot;,
+                userId,
+<span class="fc" id="L70">                state.categoryCount,</span>
+<span class="fc" id="L71">                state.closingCount,</span>
+<span class="fc" id="L72">                state.budgetCount,</span>
+<span class="fc" id="L73">                state.transactionCount);</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        if (imported &gt; 0) {</span>
+<span class="fc" id="L75">            log.debug(</span>
+<span class="fc" id="L76">                    &quot;Import backup operasi bulk: userId={}, totalBaris={}&quot;, userId, imported);</span>
+        }
+<span class="fc" id="L78">        return new ImportResult(</span>
                 state.categoryCount, state.transactionCount, state.budgetCount, state.closingCount);
     }
 
     private Map&lt;UUID, CatRef&gt; loadCategoryRefs(UUID userId) {
-<span class="fc" id="L65">        Map&lt;UUID, CatRef&gt; refs = new HashMap&lt;&gt;();</span>
-<span class="fc" id="L66">        jdbcClient</span>
-<span class="fc" id="L67">                .sql(&quot;select id, type from categories where user_id = :userId&quot;)</span>
-<span class="fc" id="L68">                .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L69">                .query(</span>
+<span class="fc" id="L83">        Map&lt;UUID, CatRef&gt; refs = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L84">        jdbcClient</span>
+<span class="fc" id="L85">                .sql(&quot;select id, type from categories where user_id = :userId&quot;)</span>
+<span class="fc" id="L86">                .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L87">                .query(</span>
                         (rs, rowNum) -&gt; {
-<span class="fc" id="L71">                            refs.put(</span>
-<span class="fc" id="L72">                                    rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L89">                            refs.put(</span>
+<span class="fc" id="L90">                                    rs.getObject(&quot;id&quot;, UUID.class),</span>
                                     new CatRef(
-<span class="fc" id="L74">                                            rs.getObject(&quot;id&quot;, UUID.class),</span>
-<span class="fc" id="L75">                                            txType(rs.getString(&quot;type&quot;))));</span>
-<span class="fc" id="L76">                            return 1;</span>
+<span class="fc" id="L92">                                            rs.getObject(&quot;id&quot;, UUID.class),</span>
+<span class="fc" id="L93">                                            txType(rs.getString(&quot;type&quot;))));</span>
+<span class="fc" id="L94">                            return 1;</span>
                         })
-<span class="fc" id="L78">                .list();</span>
-<span class="fc" id="L79">        return refs;</span>
+<span class="fc" id="L96">                .list();</span>
+<span class="fc" id="L97">        return refs;</span>
     }
 
     private Set&lt;UUID&gt; loadOwnedClosingIds(UUID userId) {
-<span class="fc" id="L83">        return new HashSet&lt;&gt;(</span>
+<span class="fc" id="L101">        return new HashSet&lt;&gt;(</span>
                 jdbcClient
-<span class="fc" id="L85">                        .sql(&quot;select id from closings where user_id = :userId&quot;)</span>
-<span class="fc" id="L86">                        .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L87">                        .query((rs, rowNum) -&gt; rs.getObject(&quot;id&quot;, UUID.class))</span>
-<span class="fc" id="L88">                        .list());</span>
+<span class="fc" id="L103">                        .sql(&quot;select id from closings where user_id = :userId&quot;)</span>
+<span class="fc" id="L104">                        .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L105">                        .query((rs, rowNum) -&gt; rs.getObject(&quot;id&quot;, UUID.class))</span>
+<span class="fc" id="L106">                        .list());</span>
     }
 
     private void applyProfile(UUID userId, BackupFile.BackupProfile profile) {
-<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (profile == null) {</span>
-<span class="fc" id="L93">            return;</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">        if (profile == null) {</span>
+<span class="fc" id="L111">            return;</span>
         }
-<span class="fc bfc" id="L95" title="All 2 branches covered.">        if (profile.displayName() != null) {</span>
-<span class="fc" id="L96">            jdbcClient</span>
-<span class="fc" id="L97">                    .sql(&quot;update users set display_name = :displayName where id = :userId&quot;)</span>
-<span class="fc" id="L98">                    .param(&quot;displayName&quot;, profile.displayName().strip())</span>
-<span class="fc" id="L99">                    .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L100">                    .update();</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (profile.displayName() != null) {</span>
+<span class="fc" id="L114">            jdbcClient</span>
+<span class="fc" id="L115">                    .sql(&quot;update users set display_name = :displayName where id = :userId&quot;)</span>
+<span class="fc" id="L116">                    .param(&quot;displayName&quot;, profile.displayName().strip())</span>
+<span class="fc" id="L117">                    .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L118">                    .update();</span>
         }
-<span class="fc bfc" id="L102" title="All 2 branches covered.">        if (profile.timezone() != null) {</span>
-<span class="fc" id="L103">            jdbcClient</span>
-<span class="fc" id="L104">                    .sql(&quot;update users set timezone = :timezone where id = :userId&quot;)</span>
-<span class="fc" id="L105">                    .param(&quot;timezone&quot;, profile.timezone().strip())</span>
-<span class="fc" id="L106">                    .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L107">                    .update();</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">        if (profile.timezone() != null) {</span>
+<span class="fc" id="L121">            jdbcClient</span>
+<span class="fc" id="L122">                    .sql(&quot;update users set timezone = :timezone where id = :userId&quot;)</span>
+<span class="fc" id="L123">                    .param(&quot;timezone&quot;, profile.timezone().strip())</span>
+<span class="fc" id="L124">                    .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L125">                    .update();</span>
         }
-<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (profile.dailyLimit() != null) {</span>
-<span class="fc" id="L110">            jdbcClient</span>
-<span class="fc" id="L111">                    .sql(&quot;update users set daily_limit = :dailyLimit where id = :userId&quot;)</span>
-<span class="fc" id="L112">                    .param(&quot;dailyLimit&quot;, profile.dailyLimit())</span>
-<span class="fc" id="L113">                    .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L114">                    .update();</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        if (profile.dailyLimit() != null) {</span>
+<span class="fc" id="L128">            jdbcClient</span>
+<span class="fc" id="L129">                    .sql(&quot;update users set daily_limit = :dailyLimit where id = :userId&quot;)</span>
+<span class="fc" id="L130">                    .param(&quot;dailyLimit&quot;, profile.dailyLimit())</span>
+<span class="fc" id="L131">                    .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L132">                    .update();</span>
         }
-<span class="fc" id="L116">    }</span>
+<span class="fc" id="L134">    }</span>
 
     private void importCategories(
             UUID userId, List&lt;BackupFile.BackupCategory&gt; rows, ImportState state) {
-<span class="fc bfc" id="L120" title="All 2 branches covered.">        if (rows == null) {</span>
-<span class="fc" id="L121">            return;</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (rows == null) {</span>
+<span class="fc" id="L139">            return;</span>
         }
-<span class="fc" id="L123">        Map&lt;UUID, TxType&gt; typesById = new HashMap&lt;&gt;();</span>
-<span class="fc" id="L124">        Map&lt;String, UUID&gt; idByTypeAndKey = new HashMap&lt;&gt;();</span>
-<span class="fc" id="L125">        jdbcClient</span>
-<span class="fc" id="L126">                .sql(&quot;select id, type, name_key from categories where user_id = :userId&quot;)</span>
-<span class="fc" id="L127">                .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L128">                .query(</span>
+<span class="fc" id="L141">        Map&lt;UUID, TxType&gt; typesById = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L142">        Map&lt;String, UUID&gt; idByTypeAndKey = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L143">        jdbcClient</span>
+<span class="fc" id="L144">                .sql(&quot;select id, type, name_key from categories where user_id = :userId&quot;)</span>
+<span class="fc" id="L145">                .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L146">                .query(</span>
                         (rs, rowNum) -&gt; {
-<span class="fc" id="L130">                            UUID id = rs.getObject(&quot;id&quot;, UUID.class);</span>
-<span class="fc" id="L131">                            TxType type = txType(rs.getString(&quot;type&quot;));</span>
-<span class="fc" id="L132">                            typesById.put(id, type);</span>
-<span class="fc" id="L133">                            idByTypeAndKey.put(</span>
-<span class="fc" id="L134">                                    type.name().toLowerCase(Locale.ROOT)</span>
+<span class="fc" id="L148">                            UUID id = rs.getObject(&quot;id&quot;, UUID.class);</span>
+<span class="fc" id="L149">                            TxType type = txType(rs.getString(&quot;type&quot;));</span>
+<span class="fc" id="L150">                            typesById.put(id, type);</span>
+<span class="fc" id="L151">                            idByTypeAndKey.put(</span>
+<span class="fc" id="L152">                                    type.name().toLowerCase(Locale.ROOT)</span>
                                             + &quot;|&quot;
-<span class="fc" id="L136">                                            + rs.getString(&quot;name_key&quot;),</span>
+<span class="fc" id="L154">                                            + rs.getString(&quot;name_key&quot;),</span>
                                     id);
-<span class="fc" id="L138">                            return id;</span>
+<span class="fc" id="L156">                            return id;</span>
                         })
-<span class="fc" id="L140">                .list();</span>
+<span class="fc" id="L158">                .list();</span>
 
-<span class="fc" id="L142">        String insertSql =</span>
+<span class="fc" id="L160">        String insertSql =</span>
                 &quot;&quot;&quot;
                 insert into categories (id, user_id, type, name, name_key, archived, created_at, updated_at)
                 values (:id, :userId, cast(:type as tx_type), :name, :nameKey, :archived, :createdAt, :updatedAt)
                 &quot;&quot;&quot;;
-<span class="fc" id="L147">        String updateSql =</span>
+<span class="fc" id="L165">        String updateSql =</span>
                 &quot;&quot;&quot;
                 update categories
                    set name = :name, name_key = :nameKey, archived = :archived, updated_at = now()
                  where id = :id and user_id = :userId
                 &quot;&quot;&quot;;
 
-<span class="fc bfc" id="L154" title="All 2 branches covered.">        for (BackupFile.BackupCategory row : rows) {</span>
-<span class="fc bfc" id="L155" title="All 2 branches covered.">            if (row.id() == null) {</span>
-<span class="fc" id="L156">                throw ApiException.unprocessable(&quot;Kategori backup tidak valid: id wajib ada&quot;);</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">        for (BackupFile.BackupCategory row : rows) {</span>
+<span class="fc bfc" id="L173" title="All 2 branches covered.">            if (row.id() == null) {</span>
+<span class="fc" id="L174">                throw ApiException.unprocessable(&quot;Kategori backup tidak valid: id wajib ada&quot;);</span>
             }
-<span class="fc" id="L158">            UUID importedId = row.id();</span>
-<span class="fc" id="L159">            String typeLabel = typeLabel(row.type(), &quot;Kategori backup tidak valid: tipe&quot;);</span>
-<span class="fc" id="L160">            TxType type = parseTxType(typeLabel, &quot;Kategori backup tidak valid: tipe&quot;);</span>
-<span class="fc bfc" id="L161" title="All 2 branches covered.">            String name = row.name() == null ? &quot;Kategori&quot; : row.name().strip();</span>
-<span class="fc bfc" id="L162" title="All 2 branches covered.">            if (name.isEmpty()) {</span>
-<span class="fc" id="L163">                name = &quot;Kategori&quot;;</span>
+<span class="fc" id="L176">            UUID importedId = row.id();</span>
+<span class="fc" id="L177">            String typeLabel = typeLabel(row.type(), &quot;Kategori backup tidak valid: tipe&quot;);</span>
+<span class="fc" id="L178">            TxType type = parseTxType(typeLabel, &quot;Kategori backup tidak valid: tipe&quot;);</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">            String name = row.name() == null ? &quot;Kategori&quot; : row.name().strip();</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">            if (name.isEmpty()) {</span>
+<span class="fc" id="L181">                name = &quot;Kategori&quot;;</span>
             }
-<span class="fc" id="L165">            String nameKey = nameKey(name);</span>
-<span class="fc bfc" id="L166" title="All 4 branches covered.">            boolean archived = row.archived() != null &amp;&amp; row.archived();</span>
+<span class="fc" id="L183">            String nameKey = nameKey(name);</span>
+<span class="fc bfc" id="L184" title="All 4 branches covered.">            boolean archived = row.archived() != null &amp;&amp; row.archived();</span>
 
-<span class="fc" id="L168">            UUID existingId = idByTypeAndKey.get(typeLabel + &quot;|&quot; + nameKey);</span>
-<span class="fc bfc" id="L169" title="All 2 branches covered.">            if (existingId != null) {</span>
+<span class="fc" id="L186">            UUID existingId = idByTypeAndKey.get(typeLabel + &quot;|&quot; + nameKey);</span>
+<span class="fc bfc" id="L187" title="All 2 branches covered.">            if (existingId != null) {</span>
                 // Kategori (tipe, nama) yang sama sudah ada di buku kas: Favorit server
                 // &amp; referensi di file backup di-remap ke id yang sudah ada.
-<span class="fc" id="L172">                state.categoriesById.put(</span>
-<span class="fc" id="L173">                        importedId, new CatRef(existingId, typesById.get(existingId)));</span>
-<span class="fc" id="L174">                continue;</span>
+<span class="fc" id="L190">                state.categoriesById.put(</span>
+<span class="fc" id="L191">                        importedId, new CatRef(existingId, typesById.get(existingId)));</span>
+<span class="fc" id="L192">                continue;</span>
             }
 
-<span class="fc bfc" id="L177" title="All 2 branches covered.">            if (typesById.containsKey(importedId)) {</span>
-<span class="fc" id="L178">                jdbcClient</span>
-<span class="fc" id="L179">                        .sql(updateSql)</span>
-<span class="fc" id="L180">                        .param(&quot;name&quot;, name)</span>
-<span class="fc" id="L181">                        .param(&quot;nameKey&quot;, nameKey)</span>
-<span class="fc" id="L182">                        .param(&quot;archived&quot;, archived)</span>
-<span class="fc" id="L183">                        .param(&quot;id&quot;, importedId)</span>
-<span class="fc" id="L184">                        .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L185">                        .update();</span>
-<span class="fc" id="L186">                state.categoriesById.put(importedId, new CatRef(importedId, type));</span>
+<span class="fc bfc" id="L195" title="All 2 branches covered.">            if (typesById.containsKey(importedId)) {</span>
+<span class="fc" id="L196">                jdbcClient</span>
+<span class="fc" id="L197">                        .sql(updateSql)</span>
+<span class="fc" id="L198">                        .param(&quot;name&quot;, name)</span>
+<span class="fc" id="L199">                        .param(&quot;nameKey&quot;, nameKey)</span>
+<span class="fc" id="L200">                        .param(&quot;archived&quot;, archived)</span>
+<span class="fc" id="L201">                        .param(&quot;id&quot;, importedId)</span>
+<span class="fc" id="L202">                        .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L203">                        .update();</span>
+<span class="fc" id="L204">                state.categoriesById.put(importedId, new CatRef(importedId, type));</span>
             } else {
-<span class="fc" id="L188">                jdbcClient</span>
-<span class="fc" id="L189">                        .sql(insertSql)</span>
-<span class="fc" id="L190">                        .paramSource(</span>
+<span class="fc" id="L206">                jdbcClient</span>
+<span class="fc" id="L207">                        .sql(insertSql)</span>
+<span class="fc" id="L208">                        .paramSource(</span>
                                 new MapSqlParameterSource()
-<span class="fc" id="L192">                                        .addValue(&quot;id&quot;, importedId)</span>
-<span class="fc" id="L193">                                        .addValue(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L194">                                        .addValue(&quot;type&quot;, typeLabel)</span>
-<span class="fc" id="L195">                                        .addValue(&quot;name&quot;, name)</span>
-<span class="fc" id="L196">                                        .addValue(&quot;nameKey&quot;, nameKey)</span>
-<span class="fc" id="L197">                                        .addValue(&quot;archived&quot;, archived)</span>
-<span class="fc" id="L198">                                        .addValue(&quot;createdAt&quot;, ts(instantOrNow(row.createdAt())))</span>
-<span class="fc" id="L199">                                        .addValue(&quot;updatedAt&quot;, ts(instantOrNow(row.updatedAt()))))</span>
-<span class="fc" id="L200">                        .update();</span>
-<span class="fc" id="L201">                state.categoriesById.put(importedId, new CatRef(importedId, type));</span>
-<span class="fc" id="L202">                typesById.put(importedId, type);</span>
+<span class="fc" id="L210">                                        .addValue(&quot;id&quot;, importedId)</span>
+<span class="fc" id="L211">                                        .addValue(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L212">                                        .addValue(&quot;type&quot;, typeLabel)</span>
+<span class="fc" id="L213">                                        .addValue(&quot;name&quot;, name)</span>
+<span class="fc" id="L214">                                        .addValue(&quot;nameKey&quot;, nameKey)</span>
+<span class="fc" id="L215">                                        .addValue(&quot;archived&quot;, archived)</span>
+<span class="fc" id="L216">                                        .addValue(&quot;createdAt&quot;, ts(instantOrNow(row.createdAt())))</span>
+<span class="fc" id="L217">                                        .addValue(&quot;updatedAt&quot;, ts(instantOrNow(row.updatedAt()))))</span>
+<span class="fc" id="L218">                        .update();</span>
+<span class="fc" id="L219">                state.categoriesById.put(importedId, new CatRef(importedId, type));</span>
+<span class="fc" id="L220">                typesById.put(importedId, type);</span>
             }
-<span class="fc" id="L204">            idByTypeAndKey.put(</span>
-<span class="fc" id="L205">                    typeLabel + &quot;|&quot; + nameKey, state.categoriesById.get(importedId).id());</span>
-<span class="fc" id="L206">            state.categoryCount++;</span>
-<span class="fc" id="L207">        }</span>
-<span class="fc" id="L208">    }</span>
+<span class="fc" id="L222">            idByTypeAndKey.put(</span>
+<span class="fc" id="L223">                    typeLabel + &quot;|&quot; + nameKey, state.categoriesById.get(importedId).id());</span>
+<span class="fc" id="L224">            state.categoryCount++;</span>
+<span class="fc" id="L225">        }</span>
+<span class="fc" id="L226">    }</span>
 
     private void importClosings(
             UUID userId, List&lt;BackupFile.BackupClosing&gt; rows, ImportState state) {
-<span class="fc bfc" id="L212" title="All 2 branches covered.">        if (rows == null) {</span>
-<span class="fc" id="L213">            return;</span>
+<span class="fc bfc" id="L230" title="All 2 branches covered.">        if (rows == null) {</span>
+<span class="fc" id="L231">            return;</span>
         }
-<span class="fc" id="L215">        String updateSql =</span>
+<span class="fc" id="L233">        String updateSql =</span>
                 &quot;&quot;&quot;
                 update closings
                    set period_start = :periodStart, period_end = :periodEnd,
@@ -220,199 +238,199 @@ public class ImportService {
                        tx_count = :txCount, file_name = :fileName, closed_at = :closedAt
                  where id = :id and user_id = :userId
                 &quot;&quot;&quot;;
-<span class="fc" id="L223">        String insertSql =</span>
+<span class="fc" id="L241">        String insertSql =</span>
                 &quot;&quot;&quot;
                 insert into closings (id, user_id, period_start, period_end, total_income,
                                       total_expense, net, tx_count, file_name, closed_at)
                 values (:id, :userId, :periodStart, :periodEnd, :totalIncome, :totalExpense,
                         :net, :txCount, :fileName, :closedAt)
                 &quot;&quot;&quot;;
-<span class="fc" id="L230">        Set&lt;UUID&gt; owned =</span>
+<span class="fc" id="L248">        Set&lt;UUID&gt; owned =</span>
                 new HashSet&lt;&gt;(
                         jdbcClient
-<span class="fc" id="L233">                                .sql(&quot;select id from closings where user_id = :userId&quot;)</span>
-<span class="fc" id="L234">                                .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L235">                                .query((rs, rowNum) -&gt; rs.getObject(&quot;id&quot;, UUID.class))</span>
-<span class="fc" id="L236">                                .list());</span>
+<span class="fc" id="L251">                                .sql(&quot;select id from closings where user_id = :userId&quot;)</span>
+<span class="fc" id="L252">                                .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L253">                                .query((rs, rowNum) -&gt; rs.getObject(&quot;id&quot;, UUID.class))</span>
+<span class="fc" id="L254">                                .list());</span>
 
-<span class="fc bfc" id="L238" title="All 2 branches covered.">        for (BackupFile.BackupClosing row : rows) {</span>
-<span class="fc bfc" id="L239" title="All 2 branches covered.">            if (row.id() == null) {</span>
-<span class="fc" id="L240">                throw ApiException.unprocessable(&quot;Arsip backup tidak valid: id wajib ada&quot;);</span>
+<span class="fc bfc" id="L256" title="All 2 branches covered.">        for (BackupFile.BackupClosing row : rows) {</span>
+<span class="fc bfc" id="L257" title="All 2 branches covered.">            if (row.id() == null) {</span>
+<span class="fc" id="L258">                throw ApiException.unprocessable(&quot;Arsip backup tidak valid: id wajib ada&quot;);</span>
             }
-<span class="fc" id="L242">            UUID id = row.id();</span>
-<span class="fc bfc" id="L243" title="All 2 branches covered.">            if (row.periodStart() == null</span>
-<span class="fc bfc" id="L244" title="All 2 branches covered.">                    || row.periodEnd() == null</span>
-<span class="fc bfc" id="L245" title="All 2 branches covered.">                    || row.periodEnd().isBefore(row.periodStart())) {</span>
-<span class="fc" id="L246">                throw ApiException.unprocessable(&quot;Arsip backup tidak valid: periode&quot;);</span>
+<span class="fc" id="L260">            UUID id = row.id();</span>
+<span class="fc bfc" id="L261" title="All 2 branches covered.">            if (row.periodStart() == null</span>
+<span class="fc bfc" id="L262" title="All 2 branches covered.">                    || row.periodEnd() == null</span>
+<span class="fc bfc" id="L263" title="All 2 branches covered.">                    || row.periodEnd().isBefore(row.periodStart())) {</span>
+<span class="fc" id="L264">                throw ApiException.unprocessable(&quot;Arsip backup tidak valid: periode&quot;);</span>
             }
-<span class="fc bfc" id="L248" title="All 4 branches covered.">            if (row.fileName() == null || row.fileName().isBlank()) {</span>
-<span class="fc" id="L249">                throw ApiException.unprocessable(&quot;Arsip backup tidak valid: file_name&quot;);</span>
+<span class="fc bfc" id="L266" title="All 4 branches covered.">            if (row.fileName() == null || row.fileName().isBlank()) {</span>
+<span class="fc" id="L267">                throw ApiException.unprocessable(&quot;Arsip backup tidak valid: file_name&quot;);</span>
             }
-<span class="fc" id="L251">            MapSqlParameterSource params =</span>
+<span class="fc" id="L269">            MapSqlParameterSource params =</span>
                     new MapSqlParameterSource()
-<span class="fc" id="L253">                            .addValue(&quot;id&quot;, id)</span>
-<span class="fc" id="L254">                            .addValue(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L255">                            .addValue(&quot;periodStart&quot;, row.periodStart())</span>
-<span class="fc" id="L256">                            .addValue(&quot;periodEnd&quot;, row.periodEnd())</span>
-<span class="fc" id="L257">                            .addValue(</span>
+<span class="fc" id="L271">                            .addValue(&quot;id&quot;, id)</span>
+<span class="fc" id="L272">                            .addValue(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L273">                            .addValue(&quot;periodStart&quot;, row.periodStart())</span>
+<span class="fc" id="L274">                            .addValue(&quot;periodEnd&quot;, row.periodEnd())</span>
+<span class="fc" id="L275">                            .addValue(</span>
                                     &quot;totalIncome&quot;,
-<span class="fc bfc" id="L259" title="All 2 branches covered.">                                    row.totalIncome() == null ? 0 : row.totalIncome())</span>
-<span class="fc" id="L260">                            .addValue(</span>
+<span class="fc bfc" id="L277" title="All 2 branches covered.">                                    row.totalIncome() == null ? 0 : row.totalIncome())</span>
+<span class="fc" id="L278">                            .addValue(</span>
                                     &quot;totalExpense&quot;,
-<span class="fc bfc" id="L262" title="All 2 branches covered.">                                    row.totalExpense() == null ? 0 : row.totalExpense())</span>
-<span class="fc bfc" id="L263" title="All 2 branches covered.">                            .addValue(&quot;net&quot;, row.net() == null ? 0 : row.net())</span>
-<span class="fc bfc" id="L264" title="All 2 branches covered.">                            .addValue(&quot;txCount&quot;, row.txCount() == null ? 0 : row.txCount())</span>
-<span class="fc" id="L265">                            .addValue(&quot;fileName&quot;, row.fileName())</span>
-<span class="fc" id="L266">                            .addValue(&quot;closedAt&quot;, ts(instantOrNow(row.closedAt())));</span>
-<span class="fc bfc" id="L267" title="All 2 branches covered.">            if (owned.contains(id)) {</span>
-<span class="fc" id="L268">                jdbcClient.sql(updateSql).paramSource(params).update();</span>
+<span class="fc bfc" id="L280" title="All 2 branches covered.">                                    row.totalExpense() == null ? 0 : row.totalExpense())</span>
+<span class="fc bfc" id="L281" title="All 2 branches covered.">                            .addValue(&quot;net&quot;, row.net() == null ? 0 : row.net())</span>
+<span class="fc bfc" id="L282" title="All 2 branches covered.">                            .addValue(&quot;txCount&quot;, row.txCount() == null ? 0 : row.txCount())</span>
+<span class="fc" id="L283">                            .addValue(&quot;fileName&quot;, row.fileName())</span>
+<span class="fc" id="L284">                            .addValue(&quot;closedAt&quot;, ts(instantOrNow(row.closedAt())));</span>
+<span class="fc bfc" id="L285" title="All 2 branches covered.">            if (owned.contains(id)) {</span>
+<span class="fc" id="L286">                jdbcClient.sql(updateSql).paramSource(params).update();</span>
             } else {
-<span class="fc" id="L270">                Long clash =</span>
+<span class="fc" id="L288">                Long clash =</span>
                         jdbcClient
-<span class="fc" id="L272">                                .sql(&quot;select count(*) from closings where id = :id&quot;)</span>
-<span class="fc" id="L273">                                .param(&quot;id&quot;, id)</span>
-<span class="fc" id="L274">                                .query((rs, rowNum) -&gt; rs.getLong(1))</span>
-<span class="fc" id="L275">                                .list()</span>
-<span class="fc" id="L276">                                .getFirst();</span>
-<span class="fc bfc" id="L277" title="All 2 branches covered.">                if (clash &gt; 0) {</span>
-<span class="fc" id="L278">                    throw ApiException.unprocessable(</span>
+<span class="fc" id="L290">                                .sql(&quot;select count(*) from closings where id = :id&quot;)</span>
+<span class="fc" id="L291">                                .param(&quot;id&quot;, id)</span>
+<span class="fc" id="L292">                                .query((rs, rowNum) -&gt; rs.getLong(1))</span>
+<span class="fc" id="L293">                                .list()</span>
+<span class="fc" id="L294">                                .getFirst();</span>
+<span class="fc bfc" id="L295" title="All 2 branches covered.">                if (clash &gt; 0) {</span>
+<span class="fc" id="L296">                    throw ApiException.unprocessable(</span>
                             &quot;Backup tidak valid: ID arsip sudah dipakai data lain&quot;);
                 }
-<span class="fc" id="L281">                jdbcClient.sql(insertSql).paramSource(params).update();</span>
-<span class="fc" id="L282">                owned.add(id);</span>
+<span class="fc" id="L299">                jdbcClient.sql(insertSql).paramSource(params).update();</span>
+<span class="fc" id="L300">                owned.add(id);</span>
             }
-<span class="fc" id="L284">            state.closingIds.put(id, id);</span>
-<span class="fc" id="L285">            state.closingCount++;</span>
-<span class="fc" id="L286">        }</span>
-<span class="fc" id="L287">    }</span>
+<span class="fc" id="L302">            state.closingIds.put(id, id);</span>
+<span class="fc" id="L303">            state.closingCount++;</span>
+<span class="fc" id="L304">        }</span>
+<span class="fc" id="L305">    }</span>
 
     private void importBudgets(
             UUID userId,
             List&lt;BackupFile.BackupBudget&gt; rows,
             ImportState state,
             Map&lt;UUID, CatRef&gt; preexistingCategories) {
-<span class="fc bfc" id="L294" title="All 2 branches covered.">        if (rows == null) {</span>
-<span class="fc" id="L295">            return;</span>
+<span class="fc bfc" id="L312" title="All 2 branches covered.">        if (rows == null) {</span>
+<span class="fc" id="L313">            return;</span>
         }
-<span class="fc" id="L297">        Map&lt;UUID, UUID&gt; budgetIdByCategory = new HashMap&lt;&gt;();</span>
-<span class="fc" id="L298">        jdbcClient</span>
-<span class="fc" id="L299">                .sql(&quot;select id, category_id from budgets where user_id = :userId&quot;)</span>
-<span class="fc" id="L300">                .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L301">                .query(</span>
+<span class="fc" id="L315">        Map&lt;UUID, UUID&gt; budgetIdByCategory = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L316">        jdbcClient</span>
+<span class="fc" id="L317">                .sql(&quot;select id, category_id from budgets where user_id = :userId&quot;)</span>
+<span class="fc" id="L318">                .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L319">                .query(</span>
                         (rs, rowNum) -&gt; {
-<span class="fc" id="L303">                            budgetIdByCategory.put(</span>
-<span class="fc" id="L304">                                    rs.getObject(&quot;category_id&quot;, UUID.class),</span>
-<span class="fc" id="L305">                                    rs.getObject(&quot;id&quot;, UUID.class));</span>
-<span class="fc" id="L306">                            return rs.getObject(&quot;id&quot;, UUID.class);</span>
+<span class="fc" id="L321">                            budgetIdByCategory.put(</span>
+<span class="fc" id="L322">                                    rs.getObject(&quot;category_id&quot;, UUID.class),</span>
+<span class="fc" id="L323">                                    rs.getObject(&quot;id&quot;, UUID.class));</span>
+<span class="fc" id="L324">                            return rs.getObject(&quot;id&quot;, UUID.class);</span>
                         })
-<span class="fc" id="L308">                .list();</span>
+<span class="fc" id="L326">                .list();</span>
 
-<span class="fc" id="L310">        String updateByCategorySql =</span>
+<span class="fc" id="L328">        String updateByCategorySql =</span>
                 &quot;&quot;&quot;
                 update budgets
                    set period = cast(:period as budget_period), amount = :amount,
                        description = :description, updated_at = now()
                  where id = :id and user_id = :userId
                 &quot;&quot;&quot;;
-<span class="fc" id="L317">        String updateByIdSql =</span>
+<span class="fc" id="L335">        String updateByIdSql =</span>
                 &quot;&quot;&quot;
                 update budgets
                    set category_id = :categoryId, period = cast(:period as budget_period),
                        amount = :amount, description = :description, updated_at = now()
                  where id = :id and user_id = :userId
                 &quot;&quot;&quot;;
-<span class="fc" id="L324">        String insertSql =</span>
+<span class="fc" id="L342">        String insertSql =</span>
                 &quot;&quot;&quot;
                 insert into budgets (id, user_id, category_id, period, amount, description, created_at, updated_at)
                 values (:id, :userId, :categoryId, cast(:period as budget_period), :amount,
                         :description, :createdAt, :updatedAt)
                 &quot;&quot;&quot;;
 
-<span class="fc bfc" id="L331" title="All 2 branches covered.">        for (BackupFile.BackupBudget row : rows) {</span>
-<span class="fc" id="L332">            String periodLabel = typeLabel(row.period(), &quot;Budget backup tidak valid: period&quot;);</span>
+<span class="fc bfc" id="L349" title="All 2 branches covered.">        for (BackupFile.BackupBudget row : rows) {</span>
+<span class="fc" id="L350">            String periodLabel = typeLabel(row.period(), &quot;Budget backup tidak valid: period&quot;);</span>
             try {
-<span class="fc" id="L334">                BudgetPeriod.valueOf(periodLabel.toUpperCase(Locale.ROOT));</span>
-<span class="fc" id="L335">            } catch (IllegalArgumentException ex) {</span>
-<span class="fc" id="L336">                throw ApiException.unprocessable(&quot;Budget backup tidak valid: period&quot;);</span>
-<span class="fc" id="L337">            }</span>
-<span class="fc bfc" id="L338" title="All 2 branches covered.">            long amount = row.amount() == null ? 0 : row.amount();</span>
-<span class="fc bfc" id="L339" title="All 2 branches covered.">            if (amount &lt; 0) {</span>
-<span class="fc" id="L340">                throw ApiException.unprocessable(&quot;Budget backup tidak valid: amount&quot;);</span>
+<span class="fc" id="L352">                BudgetPeriod.valueOf(periodLabel.toUpperCase(Locale.ROOT));</span>
+<span class="fc" id="L353">            } catch (IllegalArgumentException ex) {</span>
+<span class="fc" id="L354">                throw ApiException.unprocessable(&quot;Budget backup tidak valid: period&quot;);</span>
+<span class="fc" id="L355">            }</span>
+<span class="fc bfc" id="L356" title="All 2 branches covered.">            long amount = row.amount() == null ? 0 : row.amount();</span>
+<span class="fc bfc" id="L357" title="All 2 branches covered.">            if (amount &lt; 0) {</span>
+<span class="fc" id="L358">                throw ApiException.unprocessable(&quot;Budget backup tidak valid: amount&quot;);</span>
             }
-<span class="fc bfc" id="L342" title="All 2 branches covered.">            if (row.categoryId() == null) {</span>
-<span class="fc" id="L343">                throw ApiException.unprocessable(&quot;Budget merujuk kategori yang tidak ada&quot;);</span>
+<span class="fc bfc" id="L360" title="All 2 branches covered.">            if (row.categoryId() == null) {</span>
+<span class="fc" id="L361">                throw ApiException.unprocessable(&quot;Budget merujuk kategori yang tidak ada&quot;);</span>
             }
-<span class="fc" id="L345">            CatRef resolved =</span>
-<span class="fc" id="L346">                    resolveCategory(row.categoryId(), state, preexistingCategories, &quot;Budget&quot;);</span>
-<span class="fc" id="L347">            UUID categoryId = resolved.id();</span>
-<span class="fc bfc" id="L348" title="All 2 branches covered.">            String description = row.description() == null ? &quot;&quot; : row.description().strip();</span>
+<span class="fc" id="L363">            CatRef resolved =</span>
+<span class="fc" id="L364">                    resolveCategory(row.categoryId(), state, preexistingCategories, &quot;Budget&quot;);</span>
+<span class="fc" id="L365">            UUID categoryId = resolved.id();</span>
+<span class="fc bfc" id="L366" title="All 2 branches covered.">            String description = row.description() == null ? &quot;&quot; : row.description().strip();</span>
 
-<span class="fc" id="L350">            UUID byCategory = budgetIdByCategory.get(categoryId);</span>
-<span class="fc bfc" id="L351" title="All 2 branches covered.">            if (byCategory != null) {</span>
-<span class="fc" id="L352">                jdbcClient</span>
-<span class="fc" id="L353">                        .sql(updateByCategorySql)</span>
-<span class="fc" id="L354">                        .param(&quot;period&quot;, periodLabel)</span>
-<span class="fc" id="L355">                        .param(&quot;amount&quot;, amount)</span>
-<span class="fc" id="L356">                        .param(&quot;description&quot;, description)</span>
-<span class="fc" id="L357">                        .param(&quot;id&quot;, byCategory)</span>
-<span class="fc" id="L358">                        .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L359">                        .update();</span>
-<span class="fc" id="L360">                state.budgetCount++;</span>
-<span class="fc" id="L361">                continue;</span>
+<span class="fc" id="L368">            UUID byCategory = budgetIdByCategory.get(categoryId);</span>
+<span class="fc bfc" id="L369" title="All 2 branches covered.">            if (byCategory != null) {</span>
+<span class="fc" id="L370">                jdbcClient</span>
+<span class="fc" id="L371">                        .sql(updateByCategorySql)</span>
+<span class="fc" id="L372">                        .param(&quot;period&quot;, periodLabel)</span>
+<span class="fc" id="L373">                        .param(&quot;amount&quot;, amount)</span>
+<span class="fc" id="L374">                        .param(&quot;description&quot;, description)</span>
+<span class="fc" id="L375">                        .param(&quot;id&quot;, byCategory)</span>
+<span class="fc" id="L376">                        .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L377">                        .update();</span>
+<span class="fc" id="L378">                state.budgetCount++;</span>
+<span class="fc" id="L379">                continue;</span>
             }
-<span class="fc bfc" id="L363" title="All 2 branches covered.">            if (row.id() == null) {</span>
-<span class="fc" id="L364">                throw ApiException.unprocessable(&quot;Budget backup tidak valid: id wajib ada&quot;);</span>
+<span class="fc bfc" id="L381" title="All 2 branches covered.">            if (row.id() == null) {</span>
+<span class="fc" id="L382">                throw ApiException.unprocessable(&quot;Budget backup tidak valid: id wajib ada&quot;);</span>
             }
-<span class="fc" id="L366">            Long ownedById =</span>
+<span class="fc" id="L384">            Long ownedById =</span>
                     jdbcClient
-<span class="fc" id="L368">                            .sql(</span>
+<span class="fc" id="L386">                            .sql(</span>
                                     &quot;select count(*) from budgets&quot;
                                             + &quot; where id = :id and user_id = :userId&quot;)
-<span class="fc" id="L371">                            .param(&quot;id&quot;, row.id())</span>
-<span class="fc" id="L372">                            .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L373">                            .query((rs, rowNum) -&gt; rs.getLong(1))</span>
-<span class="fc" id="L374">                            .list()</span>
-<span class="fc" id="L375">                            .getFirst();</span>
-<span class="fc bfc" id="L376" title="All 2 branches covered.">            if (ownedById &gt; 0) {</span>
-<span class="fc" id="L377">                jdbcClient</span>
-<span class="fc" id="L378">                        .sql(updateByIdSql)</span>
-<span class="fc" id="L379">                        .param(&quot;categoryId&quot;, categoryId)</span>
-<span class="fc" id="L380">                        .param(&quot;period&quot;, periodLabel)</span>
-<span class="fc" id="L381">                        .param(&quot;amount&quot;, amount)</span>
-<span class="fc" id="L382">                        .param(&quot;description&quot;, description)</span>
-<span class="fc" id="L383">                        .param(&quot;id&quot;, row.id())</span>
-<span class="fc" id="L384">                        .param(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L385">                        .update();</span>
+<span class="fc" id="L389">                            .param(&quot;id&quot;, row.id())</span>
+<span class="fc" id="L390">                            .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L391">                            .query((rs, rowNum) -&gt; rs.getLong(1))</span>
+<span class="fc" id="L392">                            .list()</span>
+<span class="fc" id="L393">                            .getFirst();</span>
+<span class="fc bfc" id="L394" title="All 2 branches covered.">            if (ownedById &gt; 0) {</span>
+<span class="fc" id="L395">                jdbcClient</span>
+<span class="fc" id="L396">                        .sql(updateByIdSql)</span>
+<span class="fc" id="L397">                        .param(&quot;categoryId&quot;, categoryId)</span>
+<span class="fc" id="L398">                        .param(&quot;period&quot;, periodLabel)</span>
+<span class="fc" id="L399">                        .param(&quot;amount&quot;, amount)</span>
+<span class="fc" id="L400">                        .param(&quot;description&quot;, description)</span>
+<span class="fc" id="L401">                        .param(&quot;id&quot;, row.id())</span>
+<span class="fc" id="L402">                        .param(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L403">                        .update();</span>
             } else {
-<span class="fc" id="L387">                Long clash =</span>
+<span class="fc" id="L405">                Long clash =</span>
                         jdbcClient
-<span class="fc" id="L389">                                .sql(&quot;select count(*) from budgets where id = :id&quot;)</span>
-<span class="fc" id="L390">                                .param(&quot;id&quot;, row.id())</span>
-<span class="fc" id="L391">                                .query((rs, rowNum) -&gt; rs.getLong(1))</span>
-<span class="fc" id="L392">                                .list()</span>
-<span class="fc" id="L393">                                .getFirst();</span>
-<span class="fc bfc" id="L394" title="All 2 branches covered.">                if (clash &gt; 0) {</span>
-<span class="fc" id="L395">                    throw ApiException.unprocessable(</span>
+<span class="fc" id="L407">                                .sql(&quot;select count(*) from budgets where id = :id&quot;)</span>
+<span class="fc" id="L408">                                .param(&quot;id&quot;, row.id())</span>
+<span class="fc" id="L409">                                .query((rs, rowNum) -&gt; rs.getLong(1))</span>
+<span class="fc" id="L410">                                .list()</span>
+<span class="fc" id="L411">                                .getFirst();</span>
+<span class="fc bfc" id="L412" title="All 2 branches covered.">                if (clash &gt; 0) {</span>
+<span class="fc" id="L413">                    throw ApiException.unprocessable(</span>
                             &quot;Backup tidak valid: ID budget sudah dipakai data lain&quot;);
                 }
-<span class="fc" id="L398">                jdbcClient</span>
-<span class="fc" id="L399">                        .sql(insertSql)</span>
-<span class="fc" id="L400">                        .paramSource(</span>
+<span class="fc" id="L416">                jdbcClient</span>
+<span class="fc" id="L417">                        .sql(insertSql)</span>
+<span class="fc" id="L418">                        .paramSource(</span>
                                 new MapSqlParameterSource()
-<span class="fc" id="L402">                                        .addValue(&quot;id&quot;, row.id())</span>
-<span class="fc" id="L403">                                        .addValue(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L404">                                        .addValue(&quot;categoryId&quot;, categoryId)</span>
-<span class="fc" id="L405">                                        .addValue(&quot;period&quot;, periodLabel)</span>
-<span class="fc" id="L406">                                        .addValue(&quot;amount&quot;, amount)</span>
-<span class="fc" id="L407">                                        .addValue(&quot;description&quot;, description)</span>
-<span class="fc" id="L408">                                        .addValue(&quot;createdAt&quot;, ts(instantOrNow(row.createdAt())))</span>
-<span class="fc" id="L409">                                        .addValue(&quot;updatedAt&quot;, ts(instantOrNow(row.updatedAt()))))</span>
-<span class="fc" id="L410">                        .update();</span>
+<span class="fc" id="L420">                                        .addValue(&quot;id&quot;, row.id())</span>
+<span class="fc" id="L421">                                        .addValue(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L422">                                        .addValue(&quot;categoryId&quot;, categoryId)</span>
+<span class="fc" id="L423">                                        .addValue(&quot;period&quot;, periodLabel)</span>
+<span class="fc" id="L424">                                        .addValue(&quot;amount&quot;, amount)</span>
+<span class="fc" id="L425">                                        .addValue(&quot;description&quot;, description)</span>
+<span class="fc" id="L426">                                        .addValue(&quot;createdAt&quot;, ts(instantOrNow(row.createdAt())))</span>
+<span class="fc" id="L427">                                        .addValue(&quot;updatedAt&quot;, ts(instantOrNow(row.updatedAt()))))</span>
+<span class="fc" id="L428">                        .update();</span>
             }
-<span class="fc" id="L412">            budgetIdByCategory.put(categoryId, row.id());</span>
-<span class="fc" id="L413">            state.budgetCount++;</span>
-<span class="fc" id="L414">        }</span>
-<span class="fc" id="L415">    }</span>
+<span class="fc" id="L430">            budgetIdByCategory.put(categoryId, row.id());</span>
+<span class="fc" id="L431">            state.budgetCount++;</span>
+<span class="fc" id="L432">        }</span>
+<span class="fc" id="L433">    }</span>
 
     private void importTransactions(
             UUID userId,
@@ -420,10 +438,10 @@ public class ImportService {
             ImportState state,
             Map&lt;UUID, CatRef&gt; preexistingCategories,
             Set&lt;UUID&gt; preexistingClosings) {
-<span class="fc bfc" id="L423" title="All 2 branches covered.">        if (rows == null) {</span>
-<span class="fc" id="L424">            return;</span>
+<span class="fc bfc" id="L441" title="All 2 branches covered.">        if (rows == null) {</span>
+<span class="fc" id="L442">            return;</span>
         }
-<span class="fc" id="L426">        String upsertSql =</span>
+<span class="fc" id="L444">        String upsertSql =</span>
                 &quot;&quot;&quot;
                 insert into transactions (id, user_id, date, type, category_id, description,
                                           amount, closing_id, created_at, updated_at)
@@ -442,65 +460,65 @@ public class ImportService {
                 returning id
                 &quot;&quot;&quot;;
 
-<span class="fc bfc" id="L445" title="All 2 branches covered.">        for (BackupFile.BackupTransaction row : rows) {</span>
-<span class="fc bfc" id="L446" title="All 2 branches covered.">            if (row.id() == null) {</span>
-<span class="fc" id="L447">                throw ApiException.unprocessable(&quot;Transaksi backup tidak valid: id wajib ada&quot;);</span>
+<span class="fc bfc" id="L463" title="All 2 branches covered.">        for (BackupFile.BackupTransaction row : rows) {</span>
+<span class="fc bfc" id="L464" title="All 2 branches covered.">            if (row.id() == null) {</span>
+<span class="fc" id="L465">                throw ApiException.unprocessable(&quot;Transaksi backup tidak valid: id wajib ada&quot;);</span>
             }
-<span class="fc" id="L449">            UUID id = row.id();</span>
-<span class="fc bfc" id="L450" title="All 2 branches covered.">            if (row.date() == null) {</span>
-<span class="fc" id="L451">                throw ApiException.unprocessable(&quot;Transaksi backup tidak valid: tanggal&quot;);</span>
+<span class="fc" id="L467">            UUID id = row.id();</span>
+<span class="fc bfc" id="L468" title="All 2 branches covered.">            if (row.date() == null) {</span>
+<span class="fc" id="L469">                throw ApiException.unprocessable(&quot;Transaksi backup tidak valid: tanggal&quot;);</span>
             }
-<span class="fc" id="L453">            String typeLabel = typeLabel(row.type(), &quot;Transaksi backup tidak valid: tipe&quot;);</span>
-<span class="fc" id="L454">            TxType type = parseTxType(typeLabel, &quot;Transaksi backup tidak valid: tipe&quot;);</span>
-<span class="fc bfc" id="L455" title="All 2 branches covered.">            long amount = row.amount() == null ? 0 : row.amount();</span>
-<span class="fc bfc" id="L456" title="All 2 branches covered.">            if (amount &lt;= 0) {</span>
-<span class="fc" id="L457">                throw ApiException.unprocessable(&quot;Transaksi backup tidak valid: amount&quot;);</span>
+<span class="fc" id="L471">            String typeLabel = typeLabel(row.type(), &quot;Transaksi backup tidak valid: tipe&quot;);</span>
+<span class="fc" id="L472">            TxType type = parseTxType(typeLabel, &quot;Transaksi backup tidak valid: tipe&quot;);</span>
+<span class="fc bfc" id="L473" title="All 2 branches covered.">            long amount = row.amount() == null ? 0 : row.amount();</span>
+<span class="fc bfc" id="L474" title="All 2 branches covered.">            if (amount &lt;= 0) {</span>
+<span class="fc" id="L475">                throw ApiException.unprocessable(&quot;Transaksi backup tidak valid: amount&quot;);</span>
             }
-<span class="fc" id="L459">            UUID categoryId = null;</span>
-<span class="fc bfc" id="L460" title="All 2 branches covered.">            if (row.categoryId() != null) {</span>
-<span class="fc" id="L461">                ImportService.CatRef ref =</span>
-<span class="fc" id="L462">                        resolveCategory(</span>
-<span class="fc" id="L463">                                row.categoryId(), state, preexistingCategories, &quot;Transaksi&quot;);</span>
-<span class="fc bfc" id="L464" title="All 2 branches covered.">                if (!ref.type().equals(type)) {</span>
-<span class="fc" id="L465">                    throw ApiException.unprocessable(</span>
+<span class="fc" id="L477">            UUID categoryId = null;</span>
+<span class="fc bfc" id="L478" title="All 2 branches covered.">            if (row.categoryId() != null) {</span>
+<span class="fc" id="L479">                ImportService.CatRef ref =</span>
+<span class="fc" id="L480">                        resolveCategory(</span>
+<span class="fc" id="L481">                                row.categoryId(), state, preexistingCategories, &quot;Transaksi&quot;);</span>
+<span class="fc bfc" id="L482" title="All 2 branches covered.">                if (!ref.type().equals(type)) {</span>
+<span class="fc" id="L483">                    throw ApiException.unprocessable(</span>
                             &quot;Transaksi backup tidak valid: tipe kategori tidak sesuai&quot;);
                 }
-<span class="fc" id="L468">                categoryId = ref.id();</span>
+<span class="fc" id="L486">                categoryId = ref.id();</span>
             }
-<span class="fc" id="L470">            UUID closingId = null;</span>
-<span class="fc bfc" id="L471" title="All 2 branches covered.">            if (row.closingId() != null) {</span>
-<span class="fc bfc" id="L472" title="All 2 branches covered.">                if (!state.closingIds.containsKey(row.closingId())</span>
-<span class="fc bfc" id="L473" title="All 2 branches covered.">                        &amp;&amp; !preexistingClosings.contains(row.closingId())) {</span>
-<span class="fc" id="L474">                    throw ApiException.unprocessable(&quot;Transaksi merujuk arsip yang tidak ada&quot;);</span>
+<span class="fc" id="L488">            UUID closingId = null;</span>
+<span class="fc bfc" id="L489" title="All 2 branches covered.">            if (row.closingId() != null) {</span>
+<span class="fc bfc" id="L490" title="All 2 branches covered.">                if (!state.closingIds.containsKey(row.closingId())</span>
+<span class="fc bfc" id="L491" title="All 2 branches covered.">                        &amp;&amp; !preexistingClosings.contains(row.closingId())) {</span>
+<span class="fc" id="L492">                    throw ApiException.unprocessable(&quot;Transaksi merujuk arsip yang tidak ada&quot;);</span>
                 }
-<span class="fc" id="L476">                closingId = row.closingId();</span>
+<span class="fc" id="L494">                closingId = row.closingId();</span>
             }
 
-<span class="fc" id="L479">            MapSqlParameterSource params =</span>
+<span class="fc" id="L497">            MapSqlParameterSource params =</span>
                     new MapSqlParameterSource()
-<span class="fc" id="L481">                            .addValue(&quot;id&quot;, id)</span>
-<span class="fc" id="L482">                            .addValue(&quot;userId&quot;, userId)</span>
-<span class="fc" id="L483">                            .addValue(&quot;date&quot;, row.date())</span>
-<span class="fc" id="L484">                            .addValue(&quot;type&quot;, typeLabel)</span>
-<span class="fc" id="L485">                            .addValue(&quot;categoryId&quot;, categoryId)</span>
-<span class="fc" id="L486">                            .addValue(</span>
+<span class="fc" id="L499">                            .addValue(&quot;id&quot;, id)</span>
+<span class="fc" id="L500">                            .addValue(&quot;userId&quot;, userId)</span>
+<span class="fc" id="L501">                            .addValue(&quot;date&quot;, row.date())</span>
+<span class="fc" id="L502">                            .addValue(&quot;type&quot;, typeLabel)</span>
+<span class="fc" id="L503">                            .addValue(&quot;categoryId&quot;, categoryId)</span>
+<span class="fc" id="L504">                            .addValue(</span>
                                     &quot;description&quot;,
-<span class="fc bfc" id="L488" title="All 2 branches covered.">                                    row.description() == null ? &quot;&quot; : row.description().strip())</span>
-<span class="fc" id="L489">                            .addValue(&quot;amount&quot;, amount)</span>
-<span class="fc" id="L490">                            .addValue(&quot;closingId&quot;, closingId)</span>
-<span class="fc" id="L491">                            .addValue(&quot;createdAt&quot;, ts(instantOrNow(row.createdAt())))</span>
-<span class="fc" id="L492">                            .addValue(&quot;updatedAt&quot;, ts(instantOrNow(row.updatedAt())));</span>
-<span class="fc" id="L493">            var saved = jdbcClient.sql(upsertSql).paramSource(params).query(UUID.class).optional();</span>
-<span class="fc bfc" id="L494" title="All 2 branches covered.">            if (saved.isEmpty()) {</span>
-<span class="fc" id="L495">                throw ApiException.unprocessable(</span>
+<span class="fc bfc" id="L506" title="All 2 branches covered.">                                    row.description() == null ? &quot;&quot; : row.description().strip())</span>
+<span class="fc" id="L507">                            .addValue(&quot;amount&quot;, amount)</span>
+<span class="fc" id="L508">                            .addValue(&quot;closingId&quot;, closingId)</span>
+<span class="fc" id="L509">                            .addValue(&quot;createdAt&quot;, ts(instantOrNow(row.createdAt())))</span>
+<span class="fc" id="L510">                            .addValue(&quot;updatedAt&quot;, ts(instantOrNow(row.updatedAt())));</span>
+<span class="fc" id="L511">            var saved = jdbcClient.sql(upsertSql).paramSource(params).query(UUID.class).optional();</span>
+<span class="fc bfc" id="L512" title="All 2 branches covered.">            if (saved.isEmpty()) {</span>
+<span class="fc" id="L513">                throw ApiException.unprocessable(</span>
                         &quot;Backup tidak valid: ID transaksi sudah dipakai data lain&quot;);
             }
-<span class="fc" id="L498">            state.transactionCount++;</span>
-<span class="fc" id="L499">        }</span>
-<span class="fc" id="L500">    }</span>
+<span class="fc" id="L516">            state.transactionCount++;</span>
+<span class="fc" id="L517">        }</span>
+<span class="fc" id="L518">    }</span>
 
     private static String nameKey(String name) {
-<span class="fc" id="L503">        return name.trim().toLowerCase(Locale.ROOT);</span>
+<span class="fc" id="L521">        return name.trim().toLowerCase(Locale.ROOT);</span>
     }
 
     private CatRef resolveCategory(
@@ -508,45 +526,45 @@ public class ImportService {
             ImportState state,
             Map&lt;UUID, CatRef&gt; preexistingCategories,
             String what) {
-<span class="fc" id="L511">        CatRef ref = state.categoriesById.get(categoryId);</span>
-<span class="fc bfc" id="L512" title="All 2 branches covered.">        if (ref == null) {</span>
-<span class="fc" id="L513">            ref = preexistingCategories.get(categoryId);</span>
+<span class="fc" id="L529">        CatRef ref = state.categoriesById.get(categoryId);</span>
+<span class="fc bfc" id="L530" title="All 2 branches covered.">        if (ref == null) {</span>
+<span class="fc" id="L531">            ref = preexistingCategories.get(categoryId);</span>
         }
-<span class="fc bfc" id="L515" title="All 2 branches covered.">        if (ref == null) {</span>
-<span class="fc" id="L516">            throw ApiException.unprocessable(what + &quot; merujuk kategori yang tidak ada&quot;);</span>
+<span class="fc bfc" id="L533" title="All 2 branches covered.">        if (ref == null) {</span>
+<span class="fc" id="L534">            throw ApiException.unprocessable(what + &quot; merujuk kategori yang tidak ada&quot;);</span>
         }
-<span class="fc" id="L518">        return ref;</span>
+<span class="fc" id="L536">        return ref;</span>
     }
 
     private static java.time.OffsetDateTime ts(Instant instant) {
-<span class="fc" id="L522">        return java.time.OffsetDateTime.ofInstant(instant, java.time.ZoneOffset.UTC);</span>
+<span class="fc" id="L540">        return java.time.OffsetDateTime.ofInstant(instant, java.time.ZoneOffset.UTC);</span>
     }
 
     private static String typeLabel(String value, String context) {
-<span class="fc bfc" id="L526" title="All 2 branches covered.">        if (value == null) {</span>
-<span class="fc" id="L527">            throw ApiException.unprocessable(context + &quot; wajib ada&quot;);</span>
+<span class="fc bfc" id="L544" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L545">            throw ApiException.unprocessable(context + &quot; wajib ada&quot;);</span>
         }
-<span class="fc" id="L529">        String label = value.strip().toLowerCase(Locale.ROOT);</span>
-<span class="fc bfc" id="L530" title="All 2 branches covered.">        if (label.isEmpty()) {</span>
-<span class="fc" id="L531">            throw ApiException.unprocessable(context + &quot; wajib ada&quot;);</span>
+<span class="fc" id="L547">        String label = value.strip().toLowerCase(Locale.ROOT);</span>
+<span class="fc bfc" id="L548" title="All 2 branches covered.">        if (label.isEmpty()) {</span>
+<span class="fc" id="L549">            throw ApiException.unprocessable(context + &quot; wajib ada&quot;);</span>
         }
-<span class="fc" id="L533">        return label;</span>
+<span class="fc" id="L551">        return label;</span>
     }
 
     private static TxType txType(String label) {
-<span class="fc" id="L537">        return TxType.valueOf(label.toUpperCase(Locale.ROOT));</span>
+<span class="fc" id="L555">        return TxType.valueOf(label.toUpperCase(Locale.ROOT));</span>
     }
 
     private static TxType parseTxType(String label, String context) {
         try {
-<span class="fc" id="L542">            return TxType.valueOf(label.toUpperCase(Locale.ROOT));</span>
-<span class="fc" id="L543">        } catch (IllegalArgumentException ex) {</span>
-<span class="fc" id="L544">            throw ApiException.unprocessable(context);</span>
+<span class="fc" id="L560">            return TxType.valueOf(label.toUpperCase(Locale.ROOT));</span>
+<span class="fc" id="L561">        } catch (IllegalArgumentException ex) {</span>
+<span class="fc" id="L562">            throw ApiException.unprocessable(context);</span>
         }
     }
 
     private static Instant instantOrNow(Instant value) {
-<span class="fc bfc" id="L549" title="All 2 branches covered.">        return value == null ? Instant.now() : value;</span>
+<span class="fc bfc" id="L567" title="All 2 branches covered.">        return value == null ? Instant.now() : value;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -149,6 +149,18 @@ class PasswordResetFlowTest extends PostgresIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void forgotEndpointIsPublicAndEmailDisabledSuppressWarnings503() throws Exception {
+        // Profil test: email mati → NoopEmailSender menolak dengan 503 eksplisit (bukan 202 generik).
+        mockMvc.perform(
+                        post("/api/v1/auth/forgot-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(new ForgotPasswordRequest(EMAIL))))
+                .andExpect(status().isServiceUnavailable());
+        // Kode yang sudah tersimpan ikut bergulir balik saat kirim email gagal.
+        assertThat(passwordResetRepository.count()).isZero();
+    }
+
     private void resetRequest(String json, int expectedStatus) throws Exception {
         resetRequest(json, expectedStatus, null);
     }

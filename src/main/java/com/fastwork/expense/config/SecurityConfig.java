@@ -67,7 +67,7 @@ public class SecurityConfig {
                         + "img-src 'self' data: blob:; "
                         + "style-src 'self' 'unsafe-inline'; "
                         + "script-src 'self'; "
-                        + "form-action 'self'";
+                        + "form-action 'self';";
 
         @Bean
         public PasswordEncoder passwordEncoder() {
@@ -188,11 +188,13 @@ public class SecurityConfig {
                                                                 .csrfTokenRequestHandler(
                                                                                 new SpaCsrfTokenRequestHandler()) // Handler
                                                                 // khusus SPA
-                                                .ignoringRequestMatchers(
-                                                                "/api/v1/auth/login", // Login harus
+                                .ignoringRequestMatchers(
+                                                "/api/v1/auth/login", // Login harus
                                                                                       // di-exempt dari
-                                                                // CSRF
-                                                                "/api/v1/passkey/login", // Assertion
+                                                // CSRF
+                                                "/api/v1/auth/forgot-password", // Terbit OTP: pola
+                                                                // sama dengan login
+                                                "/api/v1/passkey/login", // Assertion
                                                                                           // passkey:
                                                                                           // sama
                                                                                           // pola dengan
@@ -235,11 +237,12 @@ public class SecurityConfig {
                                                                                 }))
 
                                 // Authorization Rules
-                                .authorizeHttpRequests(
-                                                auth -> auth.requestMatchers(
-                                                                "/api/v1/health",
-                                                                "/api/v1/auth/login",
-                                                                "/api/v1/auth/reset-password",
+                                                .authorizeHttpRequests(
+                                                                auth -> auth.requestMatchers(
+                                                                                "/api/v1/health",
+                                                                                "/api/v1/auth/login",
+                                                                                "/api/v1/auth/forgot-password",
+                                                                                "/api/v1/auth/reset-password",
                                                                 "/api/v1/passkey/login",
                                                                 "/api/v1/passkey/login/options",
                                                                 "/actuator/health",

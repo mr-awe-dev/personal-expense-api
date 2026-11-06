@@ -233,7 +233,7 @@ public class SummaryService {
                             difference));
         }
 
-        Totals totals = typeTotals(userId, window);
+        Totals totals = totalsOf(subtotalRows);
         boolean truncated =
                 jdbcClient
                                 .sql(TOTAL_COUNT_SQL)
@@ -323,6 +323,23 @@ public class SummaryService {
     }
 
     private record TotalPart(TxType type, long total) {}
+
+    /**
+     * Grand total income/expense langsung dijumlahkan dari baris subtotal per kategori (sudah
+     * lengkap, tidak pernah terpotong) — hemat satu SELECT GROUP BY per request tabel.
+     */
+    private static Totals totalsOf(List<SubtotalRow> rows) {
+        long income = 0;
+        long expense = 0;
+        for (SubtotalRow row : rows) {
+            if (row.type() == TxType.INCOME) {
+                income += row.subtotal();
+            } else {
+                expense += row.subtotal();
+            }
+        }
+        return new Totals(income, expense);
+    }
 
     /** Savings rate = net/income (persen); null bila income 0 (pembagian nol). */
     private static Long savingsRate(Totals totals) {

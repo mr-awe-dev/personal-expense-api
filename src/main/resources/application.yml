@@ -97,6 +97,13 @@ app:
     timeout-seconds: 25
     max-image-bytes: 10485760
     debug-return-ocr-text: false
+  # Kirim email (Brevo HTTP API) fitur opt-in: aktifkan dengan env EMAIL_* untuk OTP pemulihan
+  # password. Bila mati, jalur darurat tetap tersedia lewat CLI issue-reset-code.
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    api-key: ${EMAIL_API_KEY:}
+    from: ${EMAIL_FROM:}
+    from-name: ${EMAIL_FROM_NAME:Personal Expense}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED}
     ip-requests-per-minute: ${RATE_LIMIT_IP_PER_MINUTE}
@@ -106,7 +113,7 @@ app:
   # Passkey (WebAuthn) fitur opt-in: aktifkan dengan env WEBAUTHN_* (lihat .agent/configuration.md).
   # Jika aktif, fail-fast menuntut rp-id + allowed-origins terisi (validasi saat startup).
   webauthn:
-    enabled: ${WEBAUTHN_ENABLED:true}
+    enabled: ${WEBAUTHN_ENABLED:false}
     rp-id: ${WEBAUTHN_RP_ID:}
     rp-name: ${WEBAUTHN_RP_NAME:Personal Expense}
     allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:}

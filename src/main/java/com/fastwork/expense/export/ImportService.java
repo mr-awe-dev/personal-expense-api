@@ -19,9 +19,11 @@ import com.fastwork.expense.common.ApiException;
 import com.fastwork.expense.common.TxType;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ImportService {
 
     private static final int SUPPORTED_VERSION = 1;
@@ -57,6 +59,22 @@ public class ImportService {
         importBudgets(userId, file.budgets(), state, preexistingCategories);
         importTransactions(
                 userId, file.transactions(), state, preexistingCategories, preexistingClosings);
+        int imported =
+                state.categoryCount
+                        + state.closingCount
+                        + state.budgetCount
+                        + state.transactionCount;
+        log.info(
+                "Import backup selesai: userId={}, kategori={}, arsip={}, budget={}, transaksi={}",
+                userId,
+                state.categoryCount,
+                state.closingCount,
+                state.budgetCount,
+                state.transactionCount);
+        if (imported > 0) {
+            log.debug(
+                    "Import backup operasi bulk: userId={}, totalBaris={}", userId, imported);
+        }
         return new ImportResult(
                 state.categoryCount, state.transactionCount, state.budgetCount, state.closingCount);
     }
